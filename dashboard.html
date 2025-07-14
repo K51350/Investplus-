@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Mon tableau de bord</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Bienvenue sur ton tableau de bord</h1>
+  </header>
+
+  <section class="dashboard">
+    <h2>Solde : <span id="solde">0</span> FCFA</h2>
+
+    <button onclick="faireDepot()">💰 Faire un dépôt de 1000 FCFA</button>
+
+    <h3>Machines disponibles :</h3>
+    <div id="liste-machines"></div>
+    <button onclick="simulerJournee()">📅 Simuler une journée</button>
+    <h3>💳 Faire une demande de retrait</h3>
+<form onsubmit="demanderRetrait(event)">
+  <input type="number" id="montant" placeholder="Montant à retirer" required><br>
+  <input type="text" id="moyen" placeholder="Numéro MoMo ou infos de retrait" required><br>
+  <button type="submit">Envoyer demande</button>
+</form>
+  </section>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+
+  <script src="firebase-config.js"></script>
+  <script src="depot.js"></script>
+  <script src="machines.js"></script>
+  <script src="gains.js"></script>
+  <script src="retrait.js"></script>
+</body>
+</html>
+
+
+
+<button onclick="firebase.auth().signOut().then(() => window.location.href='index.html')">🚪 Déconnexion</button>
+<nav>
+  <a href="dashboard.html">🏠 Tableau</a> |
+  <a href="history.html">📜 Gains</a> |
+  <a href="admin.html">🔐 Admin</a>
+</nav>

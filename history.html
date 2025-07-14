@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Historique des gains</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>📜 Historique des gains journaliers</h1>
+  <ul id="liste-gains"></ul>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+
+  <script src="firebase-config.js"></script>
+  <script>
+    const db = firebase.firestore();
+
+    firebase.auth().onAuthStateChanged((user) => {
+      if (user) {
+        const uid = user.uid;
+        const gainRef = db.collection("users").doc(uid).collection("gains");
+
+        gainRef.orderBy("date", "desc").get().then(snapshot => {
+          const ul = document.getElementById("liste-gains");
+          snapshot.forEach(doc => {
+            const gain = doc.data();
+            const li = document.createElement("li");
+            li.textContent = `${gain.date} : +${gain.montant} FCFA`;
+            ul.appendChild(li);
+          });
+        });
+      }
+    });
+  </script>
+</body>
+</html>
+<nav>
+  <a href="dashboard.html">🏠 Tableau</a> |
+  <a href="history.html">📜 Gains</a> |
+  <a href="admin.html">🔐 Admin</a>
+</nav>

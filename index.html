@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>InvestiPlus</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>InvestiPlus 💸</h1>
+    <p>Investis dès 1000 FCFA et gagne chaque jour pendant 20 jours !</p>
+  </header>
+
+  <section class="formulaire">
+    <h2>Inscription</h2>
+    <form onsubmit="inscrireUtilisateur(event)">
+      <input type="text" id="nom" placeholder="Nom complet" required>
+      <input type="email" id="email" placeholder="Email" required>
+      <input type="password" id="mdp" placeholder="Mot de passe" required>
+      <button type="submit">S'inscrire</button>
+    </form>
+  </section>
+
+  <script src="script.js"></script>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+</body>
+</html>

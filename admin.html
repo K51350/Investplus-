@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Page Admin - InvestiPlus</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>🔐 Tableau de bord ADMIN</h1>
+  <div id="admin-content"></div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
+<button onclick="firebase.auth().signOut().then(() => window.location.href='index.html')">🚪 Déconnexion</button>
+<nav>
+  <a href="dashboard.html">🏠 Tableau</a> |
+  <a href="history.html">📜 Gains</a> |
+  <a href="admin.html">🔐 Admin</a>
+</nav>
