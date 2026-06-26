@@ -39,11 +39,10 @@ if (document.getElementById('theme-toggle')) {
         localStorage.setItem('theme', newTheme);
     });
 }
-// Init theme de manière persistante
 const savedTheme = localStorage.getItem('theme') || 'dark';
 document.documentElement.setAttribute('data-theme', savedTheme);
 
-// RECUPERATION EN LIVE ET TRIÉ DE L'HISTORIQUE DE L'UTILISATEUR CONNECTÉ
+// RECUPERATION EN LIVE ET TRIÉ DE L'HISTORIQUE
 async function fetchUserLiveHistory(uid) {
     const historyBody = document.getElementById('user-tx-history');
     if (!historyBody) return;
@@ -133,7 +132,7 @@ if (formLogin) {
     });
 }
 
-// INSCRIPTION & INITIALISATION DU CODE PIN SECURISÉ
+// INSCRIPTION
 const formRegister = document.getElementById('form-register');
 if (formRegister) {
     formRegister.addEventListener('submit', async (e) => {
@@ -156,56 +155,6 @@ if (formRegister) {
             window.location.href = "dashboard.html";
         } catch (error) { alert("Erreur: " + error.message); }
     });
-}
-
-// GESTION DU RÉSEAU ET RECHERCHE PARRAINAGE MULTI-NIVEAUX (8% / 2%)
-async function fetchNetworkStats(uid) {
-    try {
-        let countL1 = 0; let countL2 = 0; let totalComm = 0;
-        const qL1 = query(collection(db, "users"), where("referredBy", "==", uid));
-        const snapL1 = await getDocs(qL1);
-        
-        for (const docL1 of snapL1.docs) {
-            countL1++;
-            const qL2 = query(collection(db, "users"), where("referredBy", "==", docL1.id));
-            const snapL2 = await getDocs(qL2);
-            countL2 += snapL2.size;
-        }
-
-        const qComm = query(collection(db, "commissions"), where("referrerId", "==", uid));
-        const snapComm = await getDocs(qComm);
-        snapComm.forEach(d => totalComm += d.data().amount);
-
-        if(document.getElementById('net-l1')) document.getElementById('net-l1').innerText = countL1;
-        if(document.getElementById('net-l2')) document.getElementById('net-l2').innerText = countL2;
-        if(document.getElementById('net-comm')) document.getElementById('net-comm').innerText = `${totalComm} FCFA`;
-    } catch(err) { console.error(err); }
-}
-
-// APPLICATION LOGIQUE COMMISSIONS MULTI-NIVEAUX
-async function triggerCommissions(userUid, packPrice) {
-    const userSnap = await getDoc(doc(db, "users", userUid));
-    if (!userSnap.exists()) return;
-    
-    const parrainL1 = userSnap.data().referredBy;
-    if (parrainL1) {
-        const snapRef1 = await getDoc(doc(db, "users", parrainL1));
-        if (snapRef1.exists()) {
-            const bonusL1 = Math.floor(packPrice * 0.08);
-            await updateDoc(doc(db, "users", parrainL1), { balance: (snapRef1.data().balance || 0) + bonusL1 });
-            await addDoc(collection(db, "commissions"), { referrerId: parrainL1, fromId: userUid, level: 1, amount: bonusL1, date: new Date() });
-            
-            const parrainL2 = snapRef1.data().referredBy;
-            if (parrainL2) {
-                const snapRef2 = await getDoc(doc(db, "users", parrainL2));
-                if (snapRef2.exists()) {
-                    const bonusL2 = Math.floor(packPrice * 0.02);
-                    await updateDoc(doc(db, "users", parrainL2), { balance: (snapRef2.data().balance || 0) + bonusL2 });
-                    await addDoc(collection(db, "commissions"), { referrerId: parrainL2, fromId: userUid, level: 2, amount: bonusL2, date: new Date() });
-                }
-            }
-        }
-    }
 }
 
 // SINCRONISATION DES DONNÉES UTILISATEUR ET UI
@@ -241,13 +190,12 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// MODALES TRIGGERS & CLOSERS & BOUTON QUITTER
+// ACTIONS DU TABLEAU DE BORD
 if (window.location.pathname.includes("dashboard.html")) {
     const sidebar = document.getElementById('sidebarMenu');
     if(document.getElementById('menu-open')) document.getElementById('menu-open').addEventListener('click', () => sidebar.classList.add('open'));
     if(document.getElementById('menu-close')) document.getElementById('menu-close').addEventListener('click', () => sidebar.classList.remove('open'));
 
-    // GESTION DE LA DECONNEXION
     if(document.getElementById('btn-logout')) {
         document.getElementById('btn-logout').addEventListener('click', async () => {
             await signOut(auth);
@@ -260,74 +208,31 @@ if (window.location.pathname.includes("dashboard.html")) {
         const modal = document.getElementById(modalId);
         const close = document.getElementById(closeId);
         if(btn && modal && close) {
-            btn.addEventListener('click', () => { modal.style.display = 'flex'; sidebar.classList.remove('open'); if(btnId==='open-network') fetchNetworkStats(currentUserUid); });
+            btn.addEventListener('click', () => { modal.style.display = 'flex'; sidebar.classList.remove('open'); });
             close.addEventListener('click', () => modal.style.display = 'none');
         }
     };
     setupModal('open-deposit', 'modal-deposit', 'close-deposit');
     setupModal('open-withdraw', 'modal-withdraw', 'close-withdraw');
     setupModal('open-transfer', 'modal-transfer', 'close-transfer');
-    setupModal('open-network', 'modal-network', 'close-network');
-    setupModal('open-support', 'modal-support', 'close-support');
 
-    // SUBMIT TICKET DE SUPPORT
-    if(document.getElementById('submit-support')) {
-        document.getElementById('submit-support').addEventListener('click', async () => {
-            const msg = document.getElementById('support-msg').value.trim();
-            if(!msg) return;
-            await addDoc(collection(db, "support_tickets"), { userId: currentUserUid, message: msg, status: "Ouvert", createdAt: new Date() });
-            document.getElementById('support-msg').value = "";
-            document.getElementById('modal-support').style.display = 'none';
-            showToast("🎫 Ticket support envoyé avec succès à l'administration.");
-        });
-    }
-
-    // RECHERCHE ID DESTINATAIRE EN TEMPS RÉEL (Live Verification)
-    if(document.getElementById('transfer-target-id')) {
-        document.getElementById('transfer-target-id').addEventListener('input', async (e) => {
-            const idToSearch = e.target.value.trim();
-            const feedback = document.getElementById('transfer-live-feedback');
-            if(!feedback) return;
-            if(idToSearch.length < 10) { feedback.style.display = 'none'; return; }
-            feedback.style.display = 'block'; feedback.className = "live-feedback"; feedback.innerText = "🔍 Recherche...";
-            
-            const snap = await getDoc(doc(db, "users", idToSearch));
-            if (snap.exists()) {
-                feedback.className = "live-feedback feedback-success";
-                feedback.innerText = `✅ Destinataire trouvé : ${snap.data().username}`;
-            } else {
-                feedback.className = "live-feedback feedback-error";
-                feedback.innerText = "❌ Aucun membre avec cet ID.";
+    // LOGIQUE DE MODIFICATION DU NOM DE PROFIL
+    if(document.getElementById('btn-edit-profile')) {
+        document.getElementById('btn-edit-profile').addEventListener('click', async () => {
+            const newName = prompt("Entrez votre nouveau nom d'utilisateur :");
+            if (newName && newName.trim() !== "") {
+                try {
+                    await updateDoc(doc(db, "users", currentUserUid), { username: newName.trim() });
+                    showToast("👤 Nom d'utilisateur mis à jour !");
+                    await updateUI(currentUserUid);
+                } catch (error) {
+                    alert("Erreur lors de la modification : " + error.message);
+                }
             }
         });
     }
 
-    // SECURISATION DU TRANSFERT INTER-COMPTE (MIN 1000 & PIN)
-    if(document.getElementById('submit-transfer')) {
-        document.getElementById('submit-transfer').addEventListener('click', async () => {
-            const targetId = document.getElementById('transfer-target-id').value.trim();
-            const amount = parseInt(document.getElementById('transfer-amount').value);
-            const pin = document.getElementById('transfer-pin').value.trim();
-
-            if(amount < 1000) { alert("Le transfert minimum est de 1000 FCFA."); return; }
-            if(pin !== globalTransactionCodePin) { alert("🔒 Code PIN incorrect !"); return; }
-
-            const senderSnap = await getDoc(doc(db, "users", currentUserUid));
-            if ((senderSnap.data().balance || 0) < amount) { alert("Solde insuffisant."); return; }
-            const receiverSnap = await getDoc(doc(db, "users", targetId));
-            if (!receiverSnap.exists()) { alert("Destinataire inexistant."); return; }
-
-            await updateDoc(doc(db, "users", currentUserUid), { balance: senderSnap.data().balance - amount });
-            await updateDoc(doc(db, "users", targetId), { balance: (receiverSnap.data().balance || 0) + amount });
-            await addDoc(collection(db, "transfers"), { senderId: currentUserUid, receiverId: targetId, amount: amount, createdAt: new Date() });
-
-            document.getElementById('modal-transfer').style.display = 'none';
-            showToast(`🔄 ${amount} FCFA envoyés avec succès !`);
-            await updateUI(currentUserUid);
-        });
-    }
-
-    // SECURISATION DU RETRAIT (MIN 2050 & PIN & STATUT EN ATTENTE ADMIN)
+    // SECURISATION DU RETRAIT
     if(document.getElementById('submit-withdraw')) {
         document.getElementById('submit-withdraw').addEventListener('click', async () => {
             const amount = parseInt(document.getElementById('withdraw-amount').value);
@@ -337,37 +242,19 @@ if (window.location.pathname.includes("dashboard.html")) {
             if(amount < 2050) { alert("Le retrait minimum est de 2050 FCFA."); return; }
             if(pin !== globalTransactionCodePin) { alert("🔒 Code PIN incorrect !"); return; }
 
-            const userSnap = await getDoc(doc(db, "users", currentUserUid));
-            if((userSnap.data().balance || 0) < amount) { alert("Solde insuffisant."); return; }
+            try {
+                const userSnap = await getDoc(doc(db, "users", currentUserUid));
+                if((userSnap.data().balance || 0) < amount) { alert("Solde insuffisant."); return; }
 
-            await updateDoc(doc(db, "users", currentUserUid), { balance: userSnap.data().balance - amount });
-            await addDoc(collection(db, "withdrawals"), { userId: currentUserUid, amount: amount, destination: recipient, status: "En attente", createdAt: new Date() });
+                await updateDoc(doc(db, "users", currentUserUid), { balance: userSnap.data().balance - amount });
+                await addDoc(collection(db, "withdrawals"), { userId: currentUserUid, amount: amount, destination: recipient, status: "En attente", createdAt: new Date() });
 
-            document.getElementById('modal-withdraw').style.display = 'none';
-            showToast("💸 Demande de retrait enregistrée et transmise pour audit.");
-            await updateUI(currentUserUid);
+                document.getElementById('modal-withdraw').style.display = 'none';
+                showToast("💸 Demande de retrait enregistrée.");
+                await updateUI(currentUserUid);
+            } catch (error) {
+                alert("Erreur base de données : " + error.message);
+            }
         });
     }
-
-    // ACHAT PACKS ET DECLENCHEMENT COMMISSIONS MULTI-NIVEAUX
-    async function buyPack(packName, price, dailyIncome) {
-        const userRef = doc(db, "users", currentUserUid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.data().balance < price) { alert("Solde insuffisant."); return; }
-
-        await updateDoc(userRef, {
-            balance: userSnap.data().balance - price,
-            activePacksCount: userSnap.data().activePacksCount + 1,
-            dailyProfit: userSnap.data().dailyProfit + dailyIncome
-        });
-
-        await triggerCommissions(currentUserUid, price);
-        await addDoc(collection(db, "purchases"), { userId: currentUserUid, packName: packName, price: price, purchasedAt: new Date() });
-        showToast(`🤖 Robot ${packName} couplé avec succès !`);
-        await updateUI(currentUserUid);
-    }
-
-    if(document.getElementById('buy-viper')) document.getElementById('buy-viper').addEventListener('click', () => buyPack('Viper', 2000, 100));
-    if(document.getElementById('buy-extincteur')) document.getElementById('buy-extincteur').addEventListener('click', () => buyPack('Extincteur', 4000, 220));
-    if(document.getElementById('buy-exterminateur')) document.getElementById('buy-exterminateur').addEventListener('click', () => buyPack('Exterminateur', 8000, 480));
 }
