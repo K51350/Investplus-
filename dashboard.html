@@ -1,49 +1,297 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Mon tableau de bord</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashflow - Tableau de Bord</title>
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #131c2e;
+            --bg-card: #1b273d;
+            --accent-neon: #00f2fe;
+            --accent-purple: #9b51e0;
+            --accent-green: #00e676;
+            --accent-wave: #1cd0f9;
+            --text-main: #ffffff;
+            --text-muted: #8fa0bc;
+            --border-color: #26354e;
+        }
+        /* Mode clair */
+        [data-theme="light"] {
+            --bg-primary: #f4f6f9;
+            --bg-secondary: #ffffff;
+            --bg-card: #eef2f7;
+            --accent-neon: #0088cc;
+            --accent-purple: #7b2cbf;
+            --accent-green: #00a86b;
+            --accent-wave: #0056b3;
+            --text-main: #1a202c;
+            --text-muted: #64748b;
+            --border-color: #cbd5e1;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; transition: background-color 0.2s ease, color 0.2s ease; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-primary); color: var(--text-main); padding-bottom: 60px; overflow-x: hidden; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 15px; position: relative; }
+        
+        .menu-trigger { position: absolute; top: 15px; left: 15px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; background: var(--bg-secondary); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); z-index: 90; backdrop-filter: blur(4px); }
+        .menu-trigger span { width: 5px; height: 5px; background-color: var(--accent-neon); border-radius: 50%; }
+        .btn-logout { background: #ff3b30; color: white; padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; float: right; margin-bottom: 15px; font-weight: bold; font-size: 0.85rem; position: relative; z-index: 90; }
+        
+        .compact-header { 
+            background: linear-gradient(to bottom, rgba(15, 23, 42, 0.4), rgba(19, 28, 46, 0.95)), url('Acodejpg/header.jpg');
+            background-size: cover; background-position: center; border: 1px solid var(--border-color); 
+            border-radius: 12px; padding: 25px 15px; text-align: center; margin-bottom: 20px; margin-top: 45px; clear: both; 
+        }
+        .header-title { font-size: 1.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #ffffff; }
+        .header-subtitle { color: var(--accent-neon); font-size: 0.85rem; font-weight: 600; margin-top: 4px; }
+
+        .company-gallery { display: flex; gap: 12px; margin-bottom: 25px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
+        .gallery-card { flex: 0 0 260px; scroll-snap-align: start; background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; position: relative; }
+        .gallery-card img { width: 100%; height: 145px; object-fit: cover; display: block; }
+        .gallery-label { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(19, 28, 46, 0.9); padding: 7px; font-size: 0.75rem; color: var(--accent-neon); font-weight: bold; text-align: center; }
+
+        .account-bar { display: flex; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; margin-bottom: 15px; justify-content: space-around; text-align: center; }
+        .stat-label { display: block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 3px; }
+        .stat-value { font-size: 1.15rem; font-weight: bold; color: var(--accent-neon); }
+        .stat-value.profit { color: var(--accent-green); }
+        .countdown-box { text-align: center; background-color: var(--bg-secondary); border: 1px dashed var(--accent-neon); border-radius: 8px; padding: 10px; margin-bottom: 20px; }
+
+        .sidebar { position: fixed; top: 0; left: -340px; width: 300px; height: 100%; background-color: var(--bg-secondary); border-right: 2px solid var(--border-color); z-index: 150; padding: 25px 15px; box-shadow: 5px 0 25px rgba(0,0,0,0.5); transition: left 0.3s ease; overflow-y: auto; display: flex; flex-direction: column; }
+        .sidebar.open { left: 0; }
+        .sidebar-close { text-align: right; font-size: 1.3rem; cursor: pointer; color: var(--text-muted); margin-bottom: 5px; }
+        .sidebar-scrollable-content { flex: 1; }
+        .sidebar-section { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; margin-bottom: 15px; }
+        .sidebar-title { font-size: 0.85rem; color: var(--accent-neon); font-weight: bold; margin-bottom: 8px; text-transform: uppercase; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; }
+
+        .sidebar-profile-box { text-align: center; padding: 15px 10px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 15px; }
+        .profile-avatar-wrapper { position: relative; width: 75px; height: 75px; margin: 0 auto 10px auto; }
+        .profile-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-neon); background-color: var(--bg-primary); }
+        .avatar-upload-btn { position: absolute; bottom: 0; right: 0; background: var(--accent-purple); border: none; border-radius: 50%; width: 24px; height: 24px; color: white; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .profile-username { font-size: 1rem; font-weight: bold; color: var(--text-main); }
+        .profile-id-badge { display: inline-block; font-family: monospace; font-size: 0.7rem; color: var(--accent-wave); background: rgba(28, 208, 249, 0.1); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(28, 208, 249, 0.2); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .profile-balance-badge { font-size: 0.85rem; font-weight: bold; color: var(--accent-green); background: rgba(0, 230, 118, 0.1); padding: 2px 10px; border-radius: 20px; display: inline-block; border: 1px solid rgba(0, 230, 118, 0.2); margin-top: 4px; }
+
+        .referral-code-zone { display: flex; gap: 6px; margin-top: 8px; }
+        .referral-input { flex: 1; background: var(--bg-primary); border: 1px solid var(--border-color); padding: 6px; border-radius: 6px; color: var(--accent-neon); font-family: monospace; font-size: 0.8rem; text-align: center; outline: none; }
+        .btn-copy { background: var(--accent-purple); color: white; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.8rem; }
+
+        .menu-actions-btn { width: 100%; padding: 10px; border: none; border-radius: 6px; font-weight: bold; margin-bottom: 8px; cursor: pointer; text-transform: uppercase; font-size: 0.8rem; }
+        .btn-sidebar-dep { background: linear-gradient(90deg, #00e676, #00b0ff); color: #0a0e17; }
+        .btn-sidebar-wit { background: rgba(128,128,128,0.1); color: var(--text-main); border: 1px solid var(--border-color); }
+        .btn-sidebar-trans { background: linear-gradient(90deg, #9b51e0, #00f2fe); color: white; }
+        .btn-sidebar-info { background: var(--bg-primary); color: var(--text-main); border: 1px solid var(--border-color); }
+
+        .section-title { font-size: 1.2rem; margin-top: 20px; margin-bottom: 15px; border-left: 4px solid var(--accent-neon); padding-left: 10px; text-transform: uppercase; }
+        .packs-grid { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; }
+        .pack-card { flex: 1; min-width: 280px; max-width: 340px; background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px 15px; text-align: center; }
+        .pack-price { font-size: 1.35rem; font-weight: 800; color: var(--accent-neon); margin-bottom: 12px; background: rgba(0, 242, 254, 0.05); padding: 6px; border-radius: 6px; }
+        .btn-buy { width: 100%; background: linear-gradient(90deg, var(--accent-neon) 0%, var(--accent-purple) 100%); color: white; font-weight: bold; padding: 10px; border: none; border-radius: 6px; cursor: pointer; text-transform: uppercase; }
+
+        /* Modales */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(10, 14, 23, 0.8); backdrop-filter: blur(4px); z-index: 200; justify-content: center; align-items: center; padding: 10px; }
+        .modal-content { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; width: 100%; max-width: 420px; text-align: center; max-height: 90vh; overflow-y: auto; }
+        .modal-input { width: 100%; padding: 12px; margin-bottom: 12px; background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-main); font-size: 0.95rem; text-align: center; outline: none; }
+        .modal-buttons { display: flex; gap: 10px; margin-top: 8px; }
+        .btn-modal-close { background-color: #445674; color: white; padding: 10px; border: none; border-radius: 6px; width: 100%; font-weight: bold; cursor: pointer; }
+
+        /* Toasts Notifications */
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 999; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: var(--bg-secondary); border-left: 4px solid var(--accent-neon); color: var(--text-main); padding: 12px 20px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 0.9rem; animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { transform: translateX(120%); } to { transform: translateX(0); } }
+
+        /* Live Identity Feedback */
+        .live-feedback { font-size: 0.8rem; margin-top: -8px; margin-bottom: 12px; font-weight: 600; display: none; }
+        .feedback-success { color: var(--accent-green); }
+        .feedback-error { color: #ff3b30; }
+
+        /* Historique & Tables */
+        .history-section { background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 15px; margin-top: 20px; overflow-x: auto; }
+        .history-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left; }
+        .history-table th, .history-table td { padding: 10px; border-bottom: 1px solid var(--border-color); }
+        .history-table th { color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; }
+    </style>
 </head>
 <body>
-  <header>
-    <h1>Bienvenue sur ton tableau de bord</h1>
-  </header>
 
-  <section class="dashboard">
-    <h2>Solde : <span id="solde">0</span> FCFA</h2>
+    <div id="toast-container"></div>
 
-    <button onclick="faireDepot()">💰 Faire un dépôt de 1000 FCFA</button>
+    <div class="container">
+        <div class="menu-trigger" id="menu-open">
+            <span></span><span></span><span></span>
+        </div>
 
-    <h3>Machines disponibles :</h3>
-    <div id="liste-machines"></div>
-    <button onclick="simulerJournee()">📅 Simuler une journée</button>
-    <h3>💳 Faire une demande de retrait</h3>
-<form onsubmit="demanderRetrait(event)">
-  <input type="number" id="montant" placeholder="Montant à retirer" required><br>
-  <input type="text" id="moyen" placeholder="Numéro MoMo ou infos de retrait" required><br>
-  <button type="submit">Envoyer demande</button>
-</form>
-  </section>
+        <button class="btn-logout" id="btn-logout">Quitter</button>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
+        <header class="compact-header">
+            <h1 class="header-title">Cashflow Cloud</h1>
+            <p class="header-subtitle">Propulsé par CASH Financial Services Group</p>
+        </header>
 
-  <script src="firebase-config.js"></script>
-  <script src="depot.js"></script>
-  <script src="machines.js"></script>
-  <script src="gains.js"></script>
-  <script src="retrait.js"></script>
+        <section class="company-gallery">
+            <div class="gallery-card">
+                <img src="Acodejpg/photo1.jpg" alt="Centre">
+                <div class="gallery-label">📊 Centre Opérationnel & Trading</div>
+            </div>
+            <div class="gallery-card">
+                <img src="Acodejpg/photo2.jpg" alt="Siège">
+                <div class="gallery-label">🏛️ Siège Social Manhattan Place</div>
+            </div>
+        </section>
+
+        <section class="account-bar">
+            <div><span class="stat-label">Solde Actuel</span><span class="stat-value" id="user-balance">... FCFA</span></div>
+            <div><span class="stat-label">Robots Actifs</span><span class="stat-value" id="active-packs">...</span></div>
+            <div><span class="stat-label">Revenu / Jour</span><span class="stat-value profit" id="daily-profit">... FCFA</span></div>
+        </section>
+
+        <div id="countdown-container" class="countdown-box" style="display: none;">
+            <span style="color: var(--text-muted); font-size: 0.8rem;">⚡ Prochaine génération automatique dans : </span>
+            <span id="countdown-timer" style="color: var(--accent-neon); font-weight: bold; font-family: monospace;">--:--:--</span>
+        </div>
+
+        <h2 class="section-title">Acheter un Robot de Rendement</h2>
+        <section class="packs-grid">
+            <div class="pack-card">
+                <span style="font-size:2rem;">🐍</span><h3>Viper Bot</h3><div class="pack-price">2 000 FCFA</div>
+                <p style="margin-bottom:12px; color:var(--text-muted); font-size:0.85rem;">+100 FCFA / jour</p>
+                <button class="btn-buy" id="buy-viper">Activer</button>
+            </div>
+            <div class="pack-card">
+                <span style="font-size:2rem;">🧯</span><h3>Extincteur Bot</h3><div class="pack-price">4 000 FCFA</div>
+                <p style="margin-bottom:12px; color:var(--text-muted); font-size:0.85rem;">+220 FCFA / jour</p>
+                <button class="btn-buy" id="buy-extincteur">Activer</button>
+            </div>
+            <div class="pack-card">
+                <span style="font-size:2rem;">🤖</span><h3>Exterminateur Bot</h3><div class="pack-price">8 000 FCFA</div>
+                <p style="margin-bottom:12px; color:var(--text-muted); font-size:0.85rem;">+480 FCFA / jour</p>
+                <button class="btn-buy" id="buy-exterminateur">Activer</button>
+            </div>
+        </section>
+
+        <h2 class="section-title">Journal de mes activités (Live)</h2>
+        <section class="history-section">
+            <table class="history-table">
+                <thead>
+                    <tr><th>Date & Heure</th><th>Type / Opération</th><th>Montant</th></tr>
+                </thead>
+                <tbody id="user-tx-history">
+                    <tr><td colspan="3" style="text-align: center;">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <div class="sidebar" id="sidebarMenu">
+        <div class="sidebar-close" id="menu-close">✕</div>
+        <div class="sidebar-scrollable-content">
+            <div class="sidebar-profile-box">
+                <div class="profile-avatar-wrapper">
+                    <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" id="user-profile-img" class="profile-avatar">
+                    <label for="avatar-input-file" class="avatar-upload-btn">📷</label>
+                    <input type="file" id="avatar-input-file" accept="image/*" style="display: none;">
+                </div>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <div class="profile-username" id="profile-display-name">Chargement...</div>
+                    <button id="btn-edit-username" style="background:none; border:none; color:var(--accent-neon); cursor:pointer;">✏️</button>
+                </div>
+                <div class="profile-id-badge">ID : <span id="profile-display-id">...</span></div>
+                <div class="profile-balance-badge" id="profile-display-balance">... FCFA</div>
+            </div>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-title">Affichage</div>
+                <button class="menu-actions-btn btn-sidebar-info" id="theme-toggle">🌓 Basculer le thème</button>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">Finances Rapides</div>
+                <button class="menu-actions-btn btn-sidebar-dep" id="open-deposit">➕ Dépôt Auto</button>
+                <button class="menu-actions-btn btn-sidebar-wit" id="open-withdraw">💸 Retrait Auto</button>
+                <button class="menu-actions-btn btn-sidebar-trans" id="open-transfer">🔄 Transfert Inter-compte</button>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">👥 Mon Réseau (2 Niveaux)</div>
+                <button class="menu-actions-btn btn-sidebar-trans" id="open-network">📊 Voir mon équipe</button>
+                <div class="referral-code-zone">
+                    <input type="text" class="referral-input" id="referral-link" readonly>
+                    <button class="btn-copy" id="btn-copy-link">Copier</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-title">📩 Assistance</div>
+                <button class="menu-actions-btn btn-sidebar-info" id="open-support">🎫 Ouvrir un ticket support</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="modal-deposit">
+        <div class="modal-content">
+            <h3>Dépôt Instantané</h3>
+            <input type="number" class="modal-input" id="deposit-amount" placeholder="Montant min : 1500 FCFA">
+            <select class="modal-input" id="deposit-method">
+                <option value="Wave">🌊 Wave Auto</option>
+                <option value="OrangeMoney">📱 Orange Money</option>
+            </select>
+            <div class="modal-buttons">
+                <button class="btn-modal-close" id="close-deposit">Fermer</button>
+                <button class="menu-actions-btn btn-sidebar-dep" id="submit-deposit" style="margin:0;">Payer</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="modal-withdraw">
+        <div class="modal-content">
+            <h3>Virement Automatique Sortant</h3>
+            <input type="number" class="modal-input" id="withdraw-amount" placeholder="Montant min : 2050 FCFA">
+            <input type="text" class="modal-input" id="withdraw-recipient" placeholder="Numéro de téléphone">
+            <input type="password" class="modal-input" id="withdraw-pin" placeholder="Code PIN de sécurité (4 chiffres)" maxlength="4">
+            <div class="modal-buttons">
+                <button class="btn-modal-close" id="close-withdraw">Fermer</button>
+                <button class="menu-actions-btn btn-sidebar-trans" id="submit-withdraw" style="margin:0;">Retirer</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="modal-transfer">
+        <div class="modal-content">
+            <h3>🔄 Transfert Cashflow</h3>
+            <input type="text" class="modal-input" id="transfer-target-id" placeholder="ID Cashflow du destinataire">
+            <div id="transfer-live-feedback" class="live-feedback"></div>
+            <input type="number" class="modal-input" id="transfer-amount" placeholder="Montant min : 1000 FCFA">
+            <input type="password" class="modal-input" id="transfer-pin" placeholder="Code PIN de sécurité (4 chiffres)" maxlength="4">
+            <div class="modal-buttons">
+                <button class="btn-modal-close" id="close-transfer">Fermer</button>
+                <button class="menu-actions-btn btn-sidebar-trans" id="submit-transfer" style="margin:0;">Envoyer</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="modal-network">
+        <div class="modal-content" style="max-width: 500px;">
+            <h3>📊 Tableau de parrainage</h3>
+            <div style="display:flex; justify-content: space-around; margin: 15px 0; background: var(--bg-primary); padding: 10px; border-radius: 8px;">
+                <div><span class="stat-label">Filleuls Directs</span><span class="stat-value" id="net-l1">0</span></div>
+                <div><span class="stat-label">Filleuls Lvl 2</span><span class="stat-value" id="net-l2">0</span></div>
+                <div><span class="stat-label">Gains Parrainage</span><span class="stat-value profit" id="net-comm">0 F</span></div>
+            </div>
+            <button class="btn-modal-close" id="close-network">Fermer</button>
+        </div>
+    </div>
+
+    <div class="modal" id="modal-support">
+        <div class="modal-content">
+            <h3>🎫 Ouvrir un Ticket Support</h3>
+            <textarea class="modal-input" id="support-msg" rows="4" placeholder="Décrivez votre problème avec votre dépôt/retrait..." style="text-align:left; resize:none;"></textarea>
+            <div class="modal-buttons">
+                <button class="btn-modal-close" id="close-support">Fermer</button>
+                <button class="menu-actions-btn btn-sidebar-dep" id="submit-support" style="margin:0;">Envoyer</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
 </body>
 </html>
-
-
-
-<button onclick="firebase.auth().signOut().then(() => window.location.href='index.html')">🚪 Déconnexion</button>
-<nav>
-  <a href="dashboard.html">🏠 Tableau</a> |
-  <a href="history.html">📜 Gains</a> |
-  <a href="admin.html">🔐 Admin</a>
-</nav>

@@ -1,25 +1,102 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Page Admin - InvestiPlus</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashflow - Administration & Audit</title>
+    <style>
+        :root { --bg: #070a12; --card: #121824; --accent: #ffaa00; --text: #ffffff; --border: #222e47; }
+        body { font-family: sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; }
+        .grid-stats { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }
+        .stat-box { flex: 1; min-width: 200px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; text-align: center; }
+        .stat-num { font-size: 1.8rem; font-weight: bold; color: var(--accent); margin-top: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: var(--card); border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px; border-bottom: 1px solid var(--border); text-align: left; }
+        th { background: #182235; color: #8fa0bc; font-size: 0.8rem; text-transform: uppercase; }
+        .btn-action { padding: 6px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+        .btn-val { background: #00e676; color: #000; }
+        .btn-rej { background: #ff3b30; color: #fff; margin-left: 5px; }
+    </style>
 </head>
 <body>
-  <h1>🔐 Tableau de bord ADMIN</h1>
-  <div id="admin-content"></div>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js"></script>
-  <script src="firebase-config.js"></script>
-  <script src="admin.js"></script>
+    <h1>Back-Office Global Cashflow</h1>
+    <p style="color:#8fa0bc; margin-bottom: 25px;">Gestion des flux, audits des transactions financières et sécurité.</p>
+
+    <div class="grid-stats">
+        <div class="stat-box"><div>Total Utilisateurs</div><div class="stat-num" id="total-users">...</div></div>
+        <div class="stat-box"><div>Total Retraits En Attente</div><div class="stat-num" id="pending-withdrawals-count">...</div></div>
+    </div>
+
+    <h2>Audit des demandes de retrait en attente</h2>
+    <table>
+        <thead>
+            <tr><th>ID Utilisateur</th><th>Montant</th><th>Destination</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="admin-withdrawals-table">
+            <tr><td colspan="4" style="text-align: center;">Chargement des requêtes...</td></tr>
+        </tbody>
+    </table>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmwolOcWtfesehxqyxxk7-erLuUZ6OQYw",
+            authDomain: "cashflow-1bcad.firebaseapp.com",
+            projectId: "cashflow-1bcad"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        async function loadAdminDashboard() {
+            // 1. Charger KPI
+            const usersSnap = await getDocs(collection(db, "users"));
+            document.getElementById('total-users').innerText = usersSnap.size;
+
+            // 2. Charger Tableau
+            const withdrawalsSnap = await getDocs(collection(db, "withdrawals"));
+            let pendingCount = 0;
+            let rowsHtml = "";
+
+            withdrawalsSnap.forEach(docSnap => {
+                const d = docSnap.data();
+                if(d.status === "En attente") {
+                    pendingCount++;
+                    rowsHtml += `
+                        <tr>
+                            <td>${d.userId}</td>
+                            <td style="font-weight:bold; color:#ffaa00;">${d.amount} FCFA</td>
+                            <td>${d.destination}</td>
+                            <td>
+                                <button class="btn-action btn-val" onclick="processWithdrawal('${docSnap.id}', 'Validé')">Valider</button>
+                                <button class="btn-action btn-rej" onclick="processWithdrawal('${docSnap.id}', 'Rejeté')">Rejeter</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+
+            document.getElementById('pending-withdrawals-count').innerText = pendingCount;
+            document.getElementById('admin-withdrawals-table').innerHTML = rowsHtml || `<tr><td colspan="4" style="text-align:center; color:#8fa0bc;">Aucune demande en suspens. Safe.</td></tr>`;
+        }
+
+        window.processWithdrawal = async function(id, nextStatus) {
+            const witRef = doc(db, "withdrawals", id);
+            if(nextStatus === "Rejeté") {
+                // Rendre les fonds à l'utilisateur
+                const witSnap = await getDoc(witRef);
+                const uRef = doc(db, "users", witSnap.data().userId);
+                const uSnap = await getDoc(uRef);
+                await updateDoc(uRef, { balance: (uSnap.data().balance || 0) + witSnap.data().amount });
+            }
+            await updateDoc(witRef, { status: nextStatus });
+            alert(`Demande de virement ${nextStatus} avec succès.`);
+            loadAdminDashboard();
+        };
+
+        loadAdminDashboard();
+    </script>
 </body>
 </html>
-<button onclick="firebase.auth().signOut().then(() => window.location.href='index.html')">🚪 Déconnexion</button>
-<nav>
-  <a href="dashboard.html">🏠 Tableau</a> |
-  <a href="history.html">📜 Gains</a> |
-  <a href="admin.html">🔐 Admin</a>
-</nav>

@@ -1,31 +1,78 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>InvestiPlus</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cashflow - Connexion & Inscription</title>
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-card: #131c2e;
+            --accent-neon: #00f2fe;
+            --accent-purple: #9b51e0;
+            --text-main: #ffffff;
+            --text-muted: #8fa0bc;
+            --border-color: #26354e;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-primary); color: var(--text-main); display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .auth-container { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 30px; width: 100%; max-width: 400px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+        .tabs { display: flex; margin-bottom: 25px; border-bottom: 1px solid var(--border-color); }
+        .tab { flex: 1; text-align: center; padding: 12px; cursor: pointer; color: var(--text-muted); font-weight: bold; }
+        .tab.active { color: var(--accent-neon); border-bottom: 2px solid var(--accent-neon); }
+        .form-box { display: none; }
+        .form-box.active { display: block; }
+        h2 { font-size: 1.8rem; margin-bottom: 20px; text-align: center; background: linear-gradient(to right, white, var(--accent-neon)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        input { width: 100%; padding: 14px; margin-bottom: 15px; background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; color: white; font-size: 1rem; outline: none; }
+        input:focus { border-color: var(--accent-neon); }
+        button { width: 100%; padding: 14px; background: linear-gradient(90deg, var(--accent-neon), var(--accent-purple)); border: none; border-radius: 8px; color: #0a0e17; font-size: 1rem; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: transform 0.2s; }
+        button:active { transform: scale(0.98); }
+    </style>
 </head>
 <body>
-  <header>
-    <h1>InvestiPlus 💸</h1>
-    <p>Investis dès 1000 FCFA et gagne chaque jour pendant 20 jours !</p>
-  </header>
 
-  <section class="formulaire">
-    <h2>Inscription</h2>
-    <form onsubmit="inscrireUtilisateur(event)">
-      <input type="text" id="nom" placeholder="Nom complet" required>
-      <input type="email" id="email" placeholder="Email" required>
-      <input type="password" id="mdp" placeholder="Mot de passe" required>
-      <button type="submit">S'inscrire</button>
-    </form>
-  </section>
+    <div class="auth-container">
+        <div class="tabs">
+            <div class="tab active" id="tab-login-btn">Connexion</div>
+            <div class="tab" id="tab-register-btn">Inscription</div>
+        </div>
 
-  <script src="script.js"></script>
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"></script>
-<script src="firebase-config.js"></script>
-<script src="auth.js"></script>
+        <div class="form-box active" id="box-login">
+            <h2>Ravi de vous revoir</h2>
+            <form id="form-login">
+                <input type="email" id="login-email" placeholder="Adresse Email" required>
+                <input type="password" id="login-password" placeholder="Mot de passe" required>
+                <button type="submit">Se connecter</button>
+            </form>
+        </div>
+
+        <div class="form-box" id="box-register">
+            <h2>Créer un compte</h2>
+            <form id="form-register">
+                <input type="text" id="reg-username" placeholder="Nom d'utilisateur" required>
+                <input type="email" id="reg-email" placeholder="Adresse Email" required>
+                <input type="password" id="reg-password" placeholder="Mot de passe (6 car. min)" required>
+                <input type="text" id="reg-referral" placeholder="Code de parrainage (Optionnel)">
+                <button type="submit">S'inscrire</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const tabLogin = document.getElementById('tab-login-btn');
+        const tabRegister = document.getElementById('tab-register-btn');
+        const boxLogin = document.getElementById('box-login');
+        const boxRegister = document.getElementById('box-register');
+
+        tabLogin.addEventListener('click', () => {
+            tabLogin.classList.add('active'); tabRegister.classList.remove('active');
+            boxLogin.classList.add('active'); boxRegister.classList.remove('active');
+        });
+        tabRegister.addEventListener('click', () => {
+            tabRegister.classList.add('active'); tabLogin.classList.remove('active');
+            boxRegister.classList.add('active'); boxLogin.classList.remove('active');
+        });
+    </script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
