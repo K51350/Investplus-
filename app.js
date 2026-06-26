@@ -117,14 +117,30 @@ async function fetchUserLiveHistory(uid) {
     }
 }
 
-// INCRIPTION & INITIALISATION DU CODE PIN SECURISÉ
+// LOGIQUE DE CONNEXION (SIGN-IN)
+const formLogin = document.getElementById('form-login');
+if (formLogin) {
+    formLogin.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value;
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            window.location.href = "dashboard.html";
+        } catch (error) {
+            alert("Erreur de connexion : " + error.message);
+        }
+    });
+}
+
+// INSCRIPTION & INITIALISATION DU CODE PIN SECURISÉ
 const formRegister = document.getElementById('form-register');
 if (formRegister) {
     formRegister.addEventListener('submit', async (e) => {
         e.preventDefault();
         const pinCode = prompt("Définissez votre Code PIN de transaction secret (4 chiffres) :");
         if(!pinCode || pinCode.length !== 4 || isNaN(pinCode)) {
-            alert("Le code PIN doit être composé de exactement 4 chiffres numérique.");
+            alert("Le code PIN doit être composé de exactement 4 chiffres numériques.");
             return;
         }
         try {
@@ -173,14 +189,12 @@ async function triggerCommissions(userUid, packPrice) {
     
     const parrainL1 = userSnap.data().referredBy;
     if (parrainL1) {
-        // Niveau 1 : 8%
         const snapRef1 = await getDoc(doc(db, "users", parrainL1));
         if (snapRef1.exists()) {
             const bonusL1 = Math.floor(packPrice * 0.08);
             await updateDoc(doc(db, "users", parrainL1), { balance: (snapRef1.data().balance || 0) + bonusL1 });
             await addDoc(collection(db, "commissions"), { referrerId: parrainL1, fromId: userUid, level: 1, amount: bonusL1, date: new Date() });
             
-            // Niveau 2 : 2%
             const parrainL2 = snapRef1.data().referredBy;
             if (parrainL2) {
                 const snapRef2 = await getDoc(doc(db, "users", parrainL2));
@@ -201,14 +215,16 @@ async function updateUI(uid) {
         const userData = docSnap.data();
         globalTransactionCodePin = userData.transactionPin || "1234";
 
-        document.getElementById('user-balance').innerText = `${userData.balance} FCFA`;
-        document.getElementById('profile-display-balance').innerText = `${userData.balance} FCFA`;
-        document.getElementById('active-packs').innerText = userData.activePacksCount;
-        document.getElementById('daily-profit').innerText = `${userData.dailyProfit} FCFA`;
-        document.getElementById('profile-display-name').innerText = userData.username;
-        document.getElementById('profile-display-id').innerText = uid;
+        if(document.getElementById('user-balance')) document.getElementById('user-balance').innerText = `${userData.balance} FCFA`;
+        if(document.getElementById('profile-display-balance')) document.getElementById('profile-display-balance').innerText = `${userData.balance} FCFA`;
+        if(document.getElementById('active-packs')) document.getElementById('active-packs').innerText = userData.activePacksCount;
+        if(document.getElementById('daily-profit')) document.getElementById('daily-profit').innerText = `${userData.dailyProfit} FCFA`;
+        if(document.getElementById('profile-display-name')) document.getElementById('profile-display-name').innerText = userData.username;
+        if(document.getElementById('profile-display-id')) document.getElementById('profile-display-id').innerText = uid;
         
-        document.getElementById('referral-link').value = `${window.location.origin}${window.location.pathname.replace('dashboard.html', 'index.html')}?ref=${uid}`;
+        if(document.getElementById('referral-link')) {
+            document.getElementById('referral-link').value = `${window.location.origin}${window.location.pathname.replace('dashboard.html', 'index.html')}?ref=${uid}`;
+        }
         await fetchUserLiveHistory(uid);
     }
 }
@@ -225,11 +241,19 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-// MODALES TRIGGERS & CLOSERS
+// MODALES TRIGGERS & CLOSERS & BOUTON QUITTER
 if (window.location.pathname.includes("dashboard.html")) {
     const sidebar = document.getElementById('sidebarMenu');
-    document.getElementById('menu-open').addEventListener('click', () => sidebar.classList.add('open'));
-    document.getElementById('menu-close').addEventListener('click', () => sidebar.classList.remove('open'));
+    if(document.getElementById('menu-open')) document.getElementById('menu-open').addEventListener('click', () => sidebar.classList.add('open'));
+    if(document.getElementById('menu-close')) document.getElementById('menu-close').addEventListener('click', () => sidebar.classList.remove('open'));
+
+    // GESTION DE LA DECONNEXION
+    if(document.getElementById('btn-logout')) {
+        document.getElementById('btn-logout').addEventListener('click', async () => {
+            await signOut(auth);
+            window.location.href = "index.html";
+        });
+    }
 
     const setupModal = (btnId, modalId, closeId) => {
         const btn = document.getElementById(btnId);
@@ -247,74 +271,83 @@ if (window.location.pathname.includes("dashboard.html")) {
     setupModal('open-support', 'modal-support', 'close-support');
 
     // SUBMIT TICKET DE SUPPORT
-    document.getElementById('submit-support').addEventListener('click', async () => {
-        const msg = document.getElementById('support-msg').value.trim();
-        if(!msg) return;
-        await addDoc(collection(db, "support_tickets"), { userId: currentUserUid, message: msg, status: "Ouvert", createdAt: new Date() });
-        document.getElementById('support-msg').value = "";
-        document.getElementById('modal-support').style.display = 'none';
-        showToast("🎫 Ticket support envoyé avec succès à l'administration.");
-    });
+    if(document.getElementById('submit-support')) {
+        document.getElementById('submit-support').addEventListener('click', async () => {
+            const msg = document.getElementById('support-msg').value.trim();
+            if(!msg) return;
+            await addDoc(collection(db, "support_tickets"), { userId: currentUserUid, message: msg, status: "Ouvert", createdAt: new Date() });
+            document.getElementById('support-msg').value = "";
+            document.getElementById('modal-support').style.display = 'none';
+            showToast("🎫 Ticket support envoyé avec succès à l'administration.");
+        });
+    }
 
     // RECHERCHE ID DESTINATAIRE EN TEMPS RÉEL (Live Verification)
-    document.getElementById('transfer-target-id').addEventListener('input', async (e) => {
-        const idToSearch = e.target.value.trim();
-        const feedback = document.getElementById('transfer-live-feedback');
-        if(idToSearch.length < 10) { feedback.style.display = 'none'; return; }
-        feedback.style.display = 'block'; feedback.className = "live-feedback"; feedback.innerText = "🔍 Recherche...";
-        
-        const snap = await getDoc(doc(db, "users", idToSearch));
-        if (snap.exists()) {
-            feedback.className = "live-feedback feedback-success";
-            feedback.innerText = `✅ Destinataire trouvé : ${snap.data().username}`;
-        } else {
-            feedback.className = "live-feedback feedback-error";
-            feedback.innerText = "❌ Aucun membre avec cet ID.";
-        }
-    });
+    if(document.getElementById('transfer-target-id')) {
+        document.getElementById('transfer-target-id').addEventListener('input', async (e) => {
+            const idToSearch = e.target.value.trim();
+            const feedback = document.getElementById('transfer-live-feedback');
+            if(!feedback) return;
+            if(idToSearch.length < 10) { feedback.style.display = 'none'; return; }
+            feedback.style.display = 'block'; feedback.className = "live-feedback"; feedback.innerText = "🔍 Recherche...";
+            
+            const snap = await getDoc(doc(db, "users", idToSearch));
+            if (snap.exists()) {
+                feedback.className = "live-feedback feedback-success";
+                feedback.innerText = `✅ Destinataire trouvé : ${snap.data().username}`;
+            } else {
+                feedback.className = "live-feedback feedback-error";
+                feedback.innerText = "❌ Aucun membre avec cet ID.";
+            }
+        });
+    }
 
     // SECURISATION DU TRANSFERT INTER-COMPTE (MIN 1000 & PIN)
-    document.getElementById('submit-transfer').addEventListener('click', async () => {
-        const targetId = document.getElementById('transfer-target-id').value.trim();
-        const amount = parseInt(document.getElementById('transfer-amount').value);
-        const pin = document.getElementById('transfer-pin').value.trim();
+    if(document.getElementById('submit-transfer')) {
+        document.getElementById('submit-transfer').addEventListener('click', async () => {
+            const targetId = document.getElementById('transfer-target-id').value.trim();
+            const amount = parseInt(document.getElementById('transfer-amount').value);
+            const pin = document.getElementById('transfer-pin').value.trim();
 
-        if(amount < 1000) { alert("Le transfert minimum est de 1000 FCFA."); return; }
-        if(pin !== globalTransactionCodePin) { alert("🔒 Code PIN incorrect !"); return; }
+            if(amount < 1000) { alert("Le transfert minimum est de 1000 FCFA."); return; }
+            if(pin !== globalTransactionCodePin) { alert("🔒 Code PIN incorrect !"); return; }
 
-        const senderSnap = await getDoc(doc(db, "users", currentUserUid));
-        if ((senderSnap.data().balance || 0) < amount) { alert("Solde insuffisant."); return; }
-        const receiverSnap = await getDoc(doc(db, "users", targetId));
-        if (!receiverSnap.exists()) { alert("Destinataire inexistant."); return; }
+            const senderSnap = await getDoc(doc(db, "users", currentUserUid));
+            if ((senderSnap.data().balance || 0) < amount) { alert("Solde insuffisant."); return; }
+            const receiverSnap = await getDoc(doc(db, "users", targetId));
+            if (!receiverSnap.exists()) { alert("Destinataire inexistant."); return; }
 
-        await updateDoc(doc(db, "users", currentUserUid), { balance: senderSnap.data().balance - amount });
-        await updateDoc(doc(db, "users", targetId), { balance: (receiverSnap.data().balance || 0) + amount });
-        await addDoc(collection(db, "transfers"), { senderId: currentUserUid, receiverId: targetId, amount: amount, createdAt: new Date() });
+            await updateDoc(doc(db, "users", currentUserUid), { balance: senderSnap.data().balance - amount });
+            await updateDoc(doc(db, "users", targetId), { balance: (receiverSnap.data().balance || 0) + amount });
+            await addDoc(collection(db, "transfers"), { senderId: currentUserUid, receiverId: targetId, amount: amount, createdAt: new Date() });
 
-        document.getElementById('modal-transfer').style.display = 'none';
-        showToast(`🔄 ${amount} FCFA envoyés avec succès !`);
-        await updateUI(currentUserUid);
-    });
+            document.getElementById('modal-transfer').style.display = 'none';
+            showToast(`🔄 ${amount} FCFA envoyés avec succès !`);
+            await updateUI(currentUserUid);
+        });
+    }
 
     // SECURISATION DU RETRAIT (MIN 2050 & PIN & STATUT EN ATTENTE ADMIN)
-    document.getElementById('submit-withdraw').addEventListener('click', async () => {
-        const amount = parseInt(document.getElementById('withdraw-amount').value);
-        const recipient = document.getElementById('withdraw-recipient').value.trim();
-        const pin = document.getElementById('withdraw-pin').value.trim();
+    if(document.getElementById('submit-withdraw')) {
+        document.getElementById('submit-withdraw').addEventListener('click', async () => {
+            const amount = parseInt(document.getElementById('withdraw-amount').value);
+            const recipient = document.getElementById('withdraw-recipient').value.trim();
+            const pin = document.getElementById('withdraw-pin').value.trim();
 
-        if(amount < 2050) { alert("Le retrait minimum est de 2050 FCFA."); return; }
-        if(pin !== globalTransactionCodePin) { alert("🔒 Code PIN incorrect !"); return; }
+            if(amount < 2050) { alert("Le retrait minimum est de 2050 FCFA."); return; }
+            if(pin !== globalTransactionCodePin) { alert("🔒 Code PIN incorrect !"); return; }
 
-        const userSnap = await getDoc(doc(db, "users", currentUserUid));
-        if((userSnap.data().balance || 0) < amount) { alert("Solde insuffisant."); return; }
+            const userSnap = await getDoc(doc(db, "users", currentUserUid));
+            if((userSnap.data().balance || 0) < amount) { alert("Solde insuffisant."); return; }
 
-        await updateDoc(doc(db, "users", currentUserUid), { balance: userSnap.data().balance - amount });
-        await addDoc(collection(db, "withdrawals"), { userId: currentUserUid, amount: amount, destination: recipient, status: "En attente", createdAt: new Date() });
+            await updateDoc(doc(db, "users", currentUserUid), { balance: userSnap.data().balance - amount });
+            await addDoc(collection(db, "withdrawals"), { userId: currentUserUid, amount: amount, destination: recipient, status: "En attente", createdAt: new Date() });
 
-        document.getElementById('modal-withdraw').style.display = 'none';
-        showToast("💸 Demande de retrait enregistrée et transmise pour audit.");
-        await updateUI(currentUserUid);
-    });
+            document.getElementById('modal-withdraw').style.display = 'none';
+            showToast("💸 Demande de retrait enregistrée et transmise pour audit.");
+            await updateUI(currentUserUid);
+        });
+    }
 
     // ACHAT PACKS ET DECLENCHEMENT COMMISSIONS MULTI-NIVEAUX
     async function buyPack(packName, price, dailyIncome) {
@@ -334,7 +367,7 @@ if (window.location.pathname.includes("dashboard.html")) {
         await updateUI(currentUserUid);
     }
 
-    document.getElementById('buy-viper').addEventListener('click', () => buyPack('Viper', 2000, 100));
-    document.getElementById('buy-extincteur').addEventListener('click', () => buyPack('Extincteur', 4000, 220));
-    document.getElementById('buy-exterminateur').addEventListener('click', () => buyPack('Exterminateur', 8000, 480));
+    if(document.getElementById('buy-viper')) document.getElementById('buy-viper').addEventListener('click', () => buyPack('Viper', 2000, 100));
+    if(document.getElementById('buy-extincteur')) document.getElementById('buy-extincteur').addEventListener('click', () => buyPack('Extincteur', 4000, 220));
+    if(document.getElementById('buy-exterminateur')) document.getElementById('buy-exterminateur').addEventListener('click', () => buyPack('Exterminateur', 8000, 480));
 }
