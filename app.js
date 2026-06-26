@@ -19,7 +19,7 @@ const db = getFirestore(app);
 let currentUserUid = null;
 let globalTransactionCodePin = "1234";
 
-// TOAST NOTIFICATIONS SYSTEMS
+// SYSTEME DE NOTIFICATION TOAST
 function showToast(message) {
     const container = document.getElementById('toast-container');
     if (!container) return;
@@ -30,7 +30,7 @@ function showToast(message) {
     setTimeout(() => { toast.remove(); }, 4000);
 }
 
-// MANAGEMENT DU THEME (LIGHT / DARK)
+// TOGGLE THEME LUMINEUX / SOMBRE
 if (document.getElementById('theme-toggle')) {
     document.getElementById('theme-toggle').addEventListener('click', () => {
         const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -42,13 +42,14 @@ if (document.getElementById('theme-toggle')) {
 const savedTheme = localStorage.getItem('theme') || 'dark';
 document.documentElement.setAttribute('data-theme', savedTheme);
 
-// RECUPERATION EN LIVE ET TRIÉ DE L'HISTORIQUE
+// FETCH DE L'HISTORIQUE DE TRANSACTIONS
 async function fetchUserLiveHistory(uid) {
     const historyBody = document.getElementById('user-tx-history');
     if (!historyBody) return;
     try {
         let allTransactions = [];
 
+        // Retraits
         const qWithdrawals = query(collection(db, "withdrawals"), where("userId", "==", uid));
         const snapWithdrawals = await getDocs(qWithdrawals);
         snapWithdrawals.forEach(doc => {
@@ -61,6 +62,20 @@ async function fetchUserLiveHistory(uid) {
             });
         });
 
+        // Dépôts soumis
+        const qDeposits = query(collection(db, "deposits"), where("userId", "==", uid));
+        const snapDeposits = await getDocs(qDeposits);
+        snapDeposits.forEach(doc => {
+            const d = doc.data();
+            allTransactions.push({
+                date: d.createdAt ? d.createdAt.toDate() : new Date(),
+                label: `📥 Demande Dépôt (${d.status || 'En attente'})`,
+                amount: `+${d.amount} FCFA`,
+                color: d.status === 'Validé' ? '#00e676' : '#1cd0f9'
+            });
+        });
+
+        // Achats robots
         const qPurchases = query(collection(db, "purchases"), where("userId", "==", uid));
         const snapPurchases = await getDocs(qPurchases);
         snapPurchases.forEach(doc => {
@@ -73,129 +88,62 @@ async function fetchUserLiveHistory(uid) {
             });
         });
 
-        const qTransfersSent = query(collection(db, "transfers"), where("senderId", "==", uid));
-        const snapTransfersSent = await getDocs(qTransfersSent);
-        snapTransfersSent.forEach(doc => {
-            const d = doc.data();
-            allTransactions.push({
-                date: d.createdAt ? d.createdAt.toDate() : new Date(),
-                label: `🔄 Transfert envoyé (ID: ..${String(d.receiverId).slice(-4)})`,
-                amount: `-${d.amount} FCFA`,
-                color: '#1cd0f9'
-            });
-        });
-
-        const qTransfersReceived = query(collection(db, "transfers"), where("receiverId", "==", uid));
-        const snapTransfersReceived = await getDocs(qTransfersReceived);
-        snapTransfersReceived.forEach(doc => {
-            const d = doc.data();
-            allTransactions.push({
-                date: d.createdAt ? d.createdAt.toDate() : new Date(),
-                label: `📩 Transfert reçu d'un membre`,
-                amount: `+${d.amount} FCFA`,
-                color: '#00e676'
-            });
-        });
-
         allTransactions.sort((a, b) => b.date - a.date);
 
         if (allTransactions.length === 0) {
-            historyBody.innerHTML = `<tr><td colspan="3" style="color:var(--text-muted); text-align:center;">Aucun historique trouvé.</td></tr>`;
+            historyBody.innerHTML = `<tr><td colspan="3" style="color:var(--text-muted); text-align:center;">Aucune transaction.</td></tr>`;
             return;
         }
 
         historyBody.innerHTML = allTransactions.map(tx => `
             <tr>
-                <td style="color:var(--text-muted); font-family:monospace;">${tx.date.toLocaleString('fr-FR')}</td>
+                <td style="color:var(--text-muted); font-size:0.85rem;">${tx.date.toLocaleString('fr-FR')}</td>
                 <td>${tx.label}</td>
                 <td style="font-weight:bold; color:${tx.color};">${tx.amount}</td>
             </tr>
         `).join('');
     } catch (e) {
-        historyBody.innerHTML = `<tr><td colspan="3" style="color:#ff3b30; text-align:center;">Erreur de chargement.</td></tr>`;
+        historyBody.innerHTML = `<tr><td colspan="3" style="color:#ff3b30; text-align:center;">Erreur historique.</td></tr>`;
     }
 }
 
-// LOGIQUE DE CONNEXION (SIGN-IN)
-const formLogin = document.getElementById('form-login');
-if (formLogin) {
-    formLogin.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('login-email').value.trim();
-        const password = document.getElementById('login-password').value;
-        try {
-            await signInWithEmailAndPassword(auth, email, password);
-            window.location.href = "dashboard.html";
-        } catch (error) {
-            alert("Erreur de connexion : " + error.message);
-        }
-    });
-}
-
-// INSCRIPTION
-const formRegister = document.getElementById('form-register');
-if (formRegister) {
-    formRegister.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const pinCode = prompt("Définissez votre Code PIN de transaction secret (4 chiffres) :");
-        if(!pinCode || pinCode.length !== 4 || isNaN(pinCode)) {
-            alert("Le code PIN doit être composé de exactement 4 chiffres numériques.");
-            return;
-        }
-        try {
-            const userCredential = await createUserWithEmailAndPassword(auth, document.getElementById('reg-email').value, document.getElementById('reg-password').value);
-            await setDoc(doc(db, "users", userCredential.user.uid), {
-                username: document.getElementById('reg-username').value,
-                email: document.getElementById('reg-email').value,
-                balance: 0, activePacksCount: 0, dailyProfit: 0, profilePic: "",
-                transactionPin: pinCode,
-                referredBy: new URLSearchParams(window.location.search).get('ref') || null,
-                createdAt: new Date()
-            });
-            window.location.href = "dashboard.html";
-        } catch (error) { alert("Erreur: " + error.message); }
-    });
-}
-
-// SINCRONISATION DES DONNÉES UTILISATEUR ET UI
+// MISE A JOUR DE L'INTERFACE UTILISATEUR
 async function updateUI(uid) {
-    const docSnap = await getDoc(doc(db, "users", uid));
-    if (docSnap.exists()) {
-        const userData = docSnap.data();
-        globalTransactionCodePin = userData.transactionPin || "1234";
+    try {
+        const docSnap = await getDoc(doc(db, "users", uid));
+        if (docSnap.exists()) {
+            const userData = docSnap.data();
+            globalTransactionCodePin = userData.transactionPin || "1234";
 
-        if(document.getElementById('user-balance')) document.getElementById('user-balance').innerText = `${userData.balance} FCFA`;
-        if(document.getElementById('profile-display-balance')) document.getElementById('profile-display-balance').innerText = `${userData.balance} FCFA`;
-        if(document.getElementById('active-packs')) document.getElementById('active-packs').innerText = userData.activePacksCount;
-        if(document.getElementById('daily-profit')) document.getElementById('daily-profit').innerText = `${userData.dailyProfit} FCFA`;
-        if(document.getElementById('profile-display-name')) document.getElementById('profile-display-name').innerText = userData.username;
-        if(document.getElementById('profile-display-id')) document.getElementById('profile-display-id').innerText = uid;
-        
-        if(document.getElementById('referral-link')) {
-            document.getElementById('referral-link').value = `${window.location.origin}${window.location.pathname.replace('dashboard.html', 'index.html')}?ref=${uid}`;
+            if(document.getElementById('user-balance')) document.getElementById('user-balance').innerText = `${userData.balance || 0} FCFA`;
+            if(document.getElementById('profile-display-balance')) document.getElementById('profile-display-balance').innerText = `${userData.balance || 0} FCFA`;
+            if(document.getElementById('active-packs')) document.getElementById('active-packs').innerText = userData.activePacksCount || 0;
+            if(document.getElementById('daily-profit')) document.getElementById('daily-profit').innerText = `${userData.dailyProfit || 0} FCFA`;
+            if(document.getElementById('profile-display-name')) document.getElementById('profile-display-name').innerText = userData.username || "Membre";
+            if(document.getElementById('profile-display-id')) document.getElementById('profile-display-id').innerText = `ID: ${uid}`;
+            
+            await fetchUserLiveHistory(uid);
         }
-        await fetchUserLiveHistory(uid);
-    }
+    } catch (err) { console.error("Erreur UI:", err); }
 }
 
+// OBSÉRVATEUR DE CONNEXION (AUTH CHANGED)
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUserUid = user.uid;
         if (window.location.pathname.includes("dashboard.html")) {
             await updateUI(user.uid);
-            showToast("👋 Bienvenue sur votre session sécurisée !");
+            showToast("👋 Session sécurisée active !");
         }
     } else if (window.location.pathname.includes("dashboard.html")) {
         window.location.href = "index.html";
     }
 });
 
-// ACTIONS DU TABLEAU DE BORD
+// LOGIQUE INTERACTIVE DU DASHBOARD
 if (window.location.pathname.includes("dashboard.html")) {
-    const sidebar = document.getElementById('sidebarMenu');
-    if(document.getElementById('menu-open')) document.getElementById('menu-open').addEventListener('click', () => sidebar.classList.add('open'));
-    if(document.getElementById('menu-close')) document.getElementById('menu-close').addEventListener('click', () => sidebar.classList.remove('open'));
 
+    // Déconnexion
     if(document.getElementById('btn-logout')) {
         document.getElementById('btn-logout').addEventListener('click', async () => {
             await signOut(auth);
@@ -203,12 +151,13 @@ if (window.location.pathname.includes("dashboard.html")) {
         });
     }
 
+    // Gestion de l'affichage des fenêtres modales
     const setupModal = (btnId, modalId, closeId) => {
         const btn = document.getElementById(btnId);
         const modal = document.getElementById(modalId);
         const close = document.getElementById(closeId);
         if(btn && modal && close) {
-            btn.addEventListener('click', () => { modal.style.display = 'flex'; sidebar.classList.remove('open'); });
+            btn.addEventListener('click', () => modal.style.display = 'flex');
             close.addEventListener('click', () => modal.style.display = 'none');
         }
     };
@@ -216,23 +165,47 @@ if (window.location.pathname.includes("dashboard.html")) {
     setupModal('open-withdraw', 'modal-withdraw', 'close-withdraw');
     setupModal('open-transfer', 'modal-transfer', 'close-transfer');
 
-    // LOGIQUE DE MODIFICATION DU NOM DE PROFIL
+    // MODIFICATION DE PROFIL (NOM D'UTILISATEUR)
     if(document.getElementById('btn-edit-profile')) {
         document.getElementById('btn-edit-profile').addEventListener('click', async () => {
             const newName = prompt("Entrez votre nouveau nom d'utilisateur :");
             if (newName && newName.trim() !== "") {
                 try {
                     await updateDoc(doc(db, "users", currentUserUid), { username: newName.trim() });
-                    showToast("👤 Nom d'utilisateur mis à jour !");
+                    showToast("👤 Nom de profil modifié !");
                     await updateUI(currentUserUid);
-                } catch (error) {
-                    alert("Erreur lors de la modification : " + error.message);
-                }
+                } catch (error) { alert("Erreur modification : " + error.message); }
             }
         });
     }
 
-    // SECURISATION DU RETRAIT
+    // ENVOI D'UNE DEMANDE DE DÉPÔT
+    if(document.getElementById('submit-deposit')) {
+        document.getElementById('submit-deposit').addEventListener('click', async () => {
+            const amountInput = document.getElementById('deposit-amount');
+            const refInput = document.getElementById('deposit-reference');
+            const amount = parseInt(amountInput.value);
+            const ref = refInput.value.trim();
+
+            if(!amount || amount <= 0 || !ref) { alert("Veuillez remplir correctement tous les champs."); return; }
+
+            try {
+                await addDoc(collection(db, "deposits"), {
+                    userId: currentUserUid,
+                    amount: amount,
+                    reference: ref,
+                    status: "En attente",
+                    createdAt: new Date()
+                });
+                document.getElementById('modal-deposit').style.display = 'none';
+                amountInput.value = ""; refInput.value = "";
+                showToast("📥 Demande de dépôt reçue ! En attente de validation admin.");
+                await updateUI(currentUserUid);
+            } catch (error) { alert("Erreur de dépôt : " + error.message); }
+        });
+    }
+
+    // ACCIONNER UN RETRAIT
     if(document.getElementById('submit-withdraw')) {
         document.getElementById('submit-withdraw').addEventListener('click', async () => {
             const amount = parseInt(document.getElementById('withdraw-amount').value);
@@ -240,21 +213,57 @@ if (window.location.pathname.includes("dashboard.html")) {
             const pin = document.getElementById('withdraw-pin').value.trim();
 
             if(amount < 2050) { alert("Le retrait minimum est de 2050 FCFA."); return; }
-            if(pin !== globalTransactionCodePin) { alert("🔒 Code PIN incorrect !"); return; }
+            if(pin !== globalTransactionCodePin) { alert("🔒 Code PIN de transaction incorrect !"); return; }
 
             try {
                 const userSnap = await getDoc(doc(db, "users", currentUserUid));
-                if((userSnap.data().balance || 0) < amount) { alert("Solde insuffisant."); return; }
+                const currentBalance = userSnap.data().balance || 0;
+                if(currentBalance < amount) { alert("Solde insuffisant."); return; }
 
-                await updateDoc(doc(db, "users", currentUserUid), { balance: userSnap.data().balance - amount });
-                await addDoc(collection(db, "withdrawals"), { userId: currentUserUid, amount: amount, destination: recipient, status: "En attente", createdAt: new Date() });
+                // Déduction immédiate du solde et enregistrement de la demande
+                await updateDoc(doc(db, "users", currentUserUid), { balance: currentBalance - amount });
+                await addDoc(collection(db, "withdrawals"), {
+                    userId: currentUserUid,
+                    amount: amount,
+                    destination: recipient,
+                    status: "En attente",
+                    createdAt: new Date()
+                });
 
                 document.getElementById('modal-withdraw').style.display = 'none';
-                showToast("💸 Demande de retrait enregistrée.");
+                showToast("💸 Demande de retrait envoyée à l'administration.");
                 await updateUI(currentUserUid);
-            } catch (error) {
-                alert("Erreur base de données : " + error.message);
-            }
+            } catch (error) { alert("Erreur base de données : " + error.message); }
         });
     }
+
+    // ACHAT DE PACKS ROBOTS
+    async function buyPack(packName, price, dailyIncome) {
+        try {
+            const userRef = doc(db, "users", currentUserUid);
+            const userSnap = await getDoc(userRef);
+            const currentBalance = userSnap.data().balance || 0;
+
+            if (currentBalance < price) { alert("Solde insuffisant pour activer ce robot."); return; }
+
+            await updateDoc(userRef, {
+                balance: currentBalance - price,
+                activePacksCount: (userSnap.data().activePacksCount || 0) + 1,
+                dailyProfit: (userSnap.data().dailyProfit || 0) + dailyIncome
+            });
+
+            await addDoc(collection(db, "purchases"), {
+                userId: currentUserUid,
+                packName: packName,
+                price: price,
+                purchasedAt: new Date()
+            });
+
+            showToast(`🤖 Robot ${packName} configuré et activé !`);
+            await updateUI(currentUserUid);
+        } catch (error) { alert("Erreur d'achat : " + error.message); }
+    }
+
+    if(document.getElementById('buy-viper')) document.getElementById('buy-viper').addEventListener('click', () => buyPack('Viper', 2000, 100));
+    if(document.getElementById('buy-extincteur')) document.getElementById('buy-extincteur').addEventListener('click', () => buyPack('Extincteur', 4000, 220));
 }
