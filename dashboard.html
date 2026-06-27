@@ -31,9 +31,13 @@
         
         <div class="profile-section">
             <div class="avatar-container">
+                <!-- Zone d'affichage de la photo ou de l'émoji de profil -->
                 <div id="sbAvatar" class="avatar-circle">👤</div>
-                <!-- Sélecteur de fichier masqué pour charger depuis la galerie locale -->
+                
+                <!-- ÉTAPE CLÉ : Sélecteur masqué pour ouvrir la galerie locale sans casser le design -->
                 <input type="file" id="avatarFileInput" accept="image/*" style="display: none;">
+                
+                <!-- Bouton déclencheur pour modifier la photo -->
                 <button id="sbAvatarEdit" class="edit-avatar-btn" title="Changer de photo">📷</button>
             </div>
             <div class="username-container">
@@ -61,9 +65,9 @@
         </div>
     </aside>
 
-    <!-- CONTENU PRINCIPAL -->
+    <!-- CONTENU PRINCIPAL DU DASHBOARD -->
     <main class="dashboard-content">
-        <!-- COMPTEUR GLOBAL (REVENUS DES ROBOTS) -->
+        <!-- COMPTEUR GLOBAL (DISTRIBUTION DES PROFITS) -->
         <section class="countdown-section">
             <div class="countdown-card">
                 <h3>Prochaine distribution des profits des Robots</h3>
@@ -71,7 +75,7 @@
             </div>
         </section>
 
-        <!-- GRILLE DES COMPTEURS (METRICS) -->
+        <!-- GRILLE DES STATISTIQUES FINANCIÈRES (METRICS) -->
         <section class="metrics-grid">
             <div class="card balance-card">
                 <h4>Solde Principal</h4>
@@ -87,11 +91,11 @@
             </div>
         </section>
 
-        <!-- BOUTIQUE DES ROBOTS -->
+        <!-- BOUTIQUE DE SÉLECTION DES ROBOTS -->
         <section class="shop-section">
             <h2>Nos Configurations de Robots</h2>
             <div class="shop-grid">
-                <!-- ROBOT 1 -->
+                <!-- ROBOT VIPER -->
                 <div class="shop-card">
                     <div class="bot-icon">🤖</div>
                     <h3>Viper Bot</h3>
@@ -99,7 +103,7 @@
                     <p class="revenue">Rendement : 100 FCFA / jour</p>
                     <button id="buyViperBtn" class="buy-btn">Activer le Robot</button>
                 </div>
-                <!-- ROBOT 2 -->
+                <!-- ROBOT EXTINCTEUR -->
                 <div class="shop-card">
                     <div class="bot-icon">⚡</div>
                     <h3>Extincteur Bot</h3>
@@ -107,7 +111,7 @@
                     <p class="revenue">Rendement : 220 FCFA / jour</p>
                     <button id="buyExtincteurBtn" class="buy-btn">Activer le Robot</button>
                 </div>
-                <!-- ROBOT 3 -->
+                <!-- ROBOT CYCLONE -->
                 <div class="shop-card">
                     <div class="bot-icon">🌀</div>
                     <h3>Cyclone Bot</h3>
@@ -119,7 +123,7 @@
         </section>
     </main>
 
-    <!-- ==================== FENÊTRES MODALES ==================== -->
+    <!-- ==================== FENÊTRES MODALES INTERACTIVES ==================== -->
 
     <!-- MODALE PRÉSENTATION PARTENAIRE -->
     <div id="modalPartnerInfo" class="modal">
@@ -131,7 +135,7 @@
         </div>
     </div>
 
-    <!-- MODALE SÉLECTION DU MODE DE DÉPÔT -->
+    <!-- MODALE CHOIX DU MODE DE DÉPÔT -->
     <div id="modalDepositChoice" class="modal">
         <div class="modal-content text-center">
             <h3>Choisir la méthode de dépôt</h3>
@@ -166,7 +170,7 @@
         </div>
     </div>
 
-    <!-- MODALE SÉLECTION DU MODE DE RETRAIT -->
+    <!-- MODALE CHOIX DU MODE DE RETRAIT -->
     <div id="modalWithdrawChoice" class="modal">
         <div class="modal-content text-center">
             <h3>Demande de Retrait</h3>
@@ -179,7 +183,7 @@
         </div>
     </div>
 
-    <!-- MODALE UNIQUE FORMULAIRE RETRAIT -->
+    <!-- MODALE FORMULAIRE TECHNIQUE DE RETRAIT -->
     <div id="modalWithdrawForm" class="modal">
         <div class="modal-content">
             <h3>Formulaire de Retrait</h3>
@@ -226,6 +230,7 @@
         </div>
     </div>
 
+    <!-- CHARGEMENT DU SCRIPT LOGICIEL -->
     <script type="module" src="app.js"></script>
 </body>
 </html>
