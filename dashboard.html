@@ -3,234 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CashFlow - Tableau de Bord</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Cashflow Dashboard</title>
+    <!-- Ajoutez ici votre CSS -->
 </head>
 <body>
+    
+    <!-- Statistiques -->
+    <div id="mainBalance">0 FCFA</div>
+    <div id="mainActivePacks">0</div>
+    <div id="mainDailyProfit">0 FCFA</div>
 
-    <!-- BARRE SUPÉRIEURE (TOPBAR) -->
-    <header class="topbar">
-        <button id="sidebarOpenBtn" class="menu-btn">☰</button>
-        <div class="logo">Cash<span>Flow</span></div>
-        <button id="topLogoutBtn" class="logout-btn">Déconnexion</button>
-    </header>
-
-    <!-- BANDEAU DÉROULANT (TICKER) -->
-    <div class="ticker-wrap">
-        <div class="ticker">
-            🌟 Bienvenue sur CashFlow • Doublez vos gains avec nos configurations de Robots automatisés ! • Retraits instantanés opérationnels 24h/7 • Suivez vos statistiques en temps réel.
-        </div>
-    </div>
-
-    <!-- PANNEAU LATÉRAL (SIDEBAR) -->
-    <aside id="mainSidebar" class="sidebar">
-        <div class="sidebar-header">
-            <h3>Mon Profil</h3>
-            <button id="sidebarCloseBtn" class="close-btn">×</button>
-        </div>
+    <!-- Sidebar -->
+    <div id="mainSidebar">
+        <button id="sidebarCloseBtn">Fermer</button>
+        <div id="sbAvatar">👤</div>
+        <div id="sbUsername">Chargement...</div>
+        <div id="sbUid">ID : ...</div>
+        <div id="sbBalance">0 FCFA</div>
+        <div id="sbUserEmail">Email...</div>
         
-        <div class="profile-section">
-            <div class="avatar-container">
-                <!-- Zone d'affichage de la photo ou de l'émoji de profil -->
-                <div id="sbAvatar" class="avatar-circle">👤</div>
-                
-                <!-- ÉTAPE CLÉ : Sélecteur masqué pour ouvrir la galerie locale sans casser le design -->
-                <input type="file" id="avatarFileInput" accept="image/*" style="display: none;">
-                
-                <!-- Bouton déclencheur pour modifier la photo -->
-                <button id="sbAvatarEdit" class="edit-avatar-btn" title="Changer de photo">📷</button>
-            </div>
-            <div class="username-container">
-                <span id="sbUsername">Chargement...</span>
-                <button id="sbUsernameEdit" class="edit-btn">✏️</button>
-            </div>
-            <p id="sbUserEmail" class="user-email">...</p>
-            <p id="sbUid" class="user-uid">ID : ...</p>
-        </div>
-
-        <nav class="sidebar-menu">
-            <button id="sbPartnerBtn" class="menu-item">🤝 Présentation Partenaire</button>
-            <button id="sbDepositBtn" class="menu-item">💰 Effectuer un Dépôt</button>
-            <button id="sbWithdrawBtn" class="menu-item">💸 Retirer des Fonds</button>
-            <button id="sbTransferBtn" class="menu-item">🔄 Transfert Inter-compte</button>
-        </nav>
-
-        <div class="sidebar-footer">
-            <p>Solde de Parrainage : <strong id="sbBalance">0 FCFA</strong></p>
-            <label for="sbRefLink">Votre lien d'invitation :</label>
-            <div class="share-box">
-                <input type="text" id="sbRefLink" readonly value="...">
-                <button id="sbCopyRefBtn">Copier</button>
-            </div>
-        </div>
-    </aside>
-
-    <!-- CONTENU PRINCIPAL DU DASHBOARD -->
-    <main class="dashboard-content">
-        <!-- COMPTEUR GLOBAL (DISTRIBUTION DES PROFITS) -->
-        <section class="countdown-section">
-            <div class="countdown-card">
-                <h3>Prochaine distribution des profits des Robots</h3>
-                <div id="countdownTimer" class="timer">--h --m --s</div>
-            </div>
-        </section>
-
-        <!-- GRILLE DES STATISTIQUES FINANCIÈRES (METRICS) -->
-        <section class="metrics-grid">
-            <div class="card balance-card">
-                <h4>Solde Principal</h4>
-                <p id="mainBalance" class="amount">0 FCFA</p>
-            </div>
-            <div class="card packs-card">
-                <h4>Robots Actifs</h4>
-                <p id="mainActivePacks" class="amount">0</p>
-            </div>
-            <div class="card profit-card">
-                <h4>Profit Journalier estimé</h4>
-                <p id="mainDailyProfit" class="amount">0 FCFA</p>
-            </div>
-        </section>
-
-        <!-- BOUTIQUE DE SÉLECTION DES ROBOTS -->
-        <section class="shop-section">
-            <h2>Nos Configurations de Robots</h2>
-            <div class="shop-grid">
-                <!-- ROBOT VIPER -->
-                <div class="shop-card">
-                    <div class="bot-icon">🤖</div>
-                    <h3>Viper Bot</h3>
-                    <p class="price">Prix : 2 000 FCFA</p>
-                    <p class="revenue">Rendement : 100 FCFA / jour</p>
-                    <button id="buyViperBtn" class="buy-btn">Activer le Robot</button>
-                </div>
-                <!-- ROBOT EXTINCTEUR -->
-                <div class="shop-card">
-                    <div class="bot-icon">⚡</div>
-                    <h3>Extincteur Bot</h3>
-                    <p class="price">Prix : 4 000 FCFA</p>
-                    <p class="revenue">Rendement : 220 FCFA / jour</p>
-                    <button id="buyExtincteurBtn" class="buy-btn">Activer le Robot</button>
-                </div>
-                <!-- ROBOT CYCLONE -->
-                <div class="shop-card">
-                    <div class="bot-icon">🌀</div>
-                    <h3>Cyclone Bot</h3>
-                    <p class="price">Prix : 10 000 FCFA</p>
-                    <p class="revenue">Rendement : 600 FCFA / jour</p>
-                    <button id="buyCycloneBtn" class="buy-btn">Activer le Robot</button>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- ==================== FENÊTRES MODALES INTERACTIVES ==================== -->
-
-    <!-- MODALE PRÉSENTATION PARTENAIRE -->
-    <div id="modalPartnerInfo" class="modal">
-        <div class="modal-content">
-            <h3>Partenariat Stratégique CFSG LTD</h3>
-            <p>Nous collaborons étroitement avec la firme internationale <strong>CFSG LTD</strong> pour sécuriser vos investissements sur les marchés de contrats à terme.</p>
-            <p>Chaque robot déployé sur notre plateforme reflète une fraction de puissance algorithmique opérée par leurs serveurs à haute fréquence.</p>
-            <button id="partnerInfoClose" class="modal-close-btn">Fermer la fenêtre</button>
-        </div>
+        <input type="text" id="sbRefLink" readonly>
+        <button id="sbCopyRefBtn">Copier</button>
+        
+        <button id="sbUsernameEdit">Modifier Nom</button>
+        <button id="sbAvatarEdit">Modifier Photo</button>
+        <button id="sbDepositBtn">Dépôt</button>
+        <button id="sbWithdrawBtn">Retrait</button>
+        <button id="sbTransferBtn">Transfert</button>
+        <button id="topLogoutBtn">Quitter</button>
     </div>
 
-    <!-- MODALE CHOIX DU MODE DE DÉPÔT -->
-    <div id="modalDepositChoice" class="modal">
-        <div class="modal-content text-center">
-            <h3>Choisir la méthode de dépôt</h3>
-            <div class="choice-buttons">
-                <button id="depChoiceMomo" class="choice-btn momo">Mobile Money (Fusion Money)</button>
-                <button id="depChoiceCrypto" class="choice-btn crypto">Crypto-monnaies (Manuel)</button>
-            </div>
-            <button id="depChoiceClose" class="modal-close-btn">Annuler</button>
-        </div>
-    </div>
+    <button id="sidebarOpenBtn">Menu</button>
 
-    <!-- MODALE FORMULAIRE DÉPÔT CRYPTO -->
-    <div id="modalDepositCryptoForm" class="modal">
-        <div class="modal-content">
-            <h3>Dépôt par Crypto-monnaie</h3>
-            <p class="instructions">Envoyez le montant de votre choix à l'adresse USDT (TRC20) ci-dessous, puis saisissez le montant en FCFA et le code de référence de la transaction.</p>
-            <div class="address-box">TR7NHqjeKQxGTCi8q8XYZi4v1A6jZ...</div>
-            
-            <div class="form-group">
-                <label for="cryptoDepAmount">Montant équivalent en FCFA :</label>
-                <input type="number" id="cryptoDepAmount" placeholder="Ex: 5000">
-            </div>
-            <div class="form-group">
-                <label for="cryptoDepRef">ID de transaction / Code de référence :</label>
-                <input type="text" id="cryptoDepRef" placeholder="Collez le texte du reçu">
-            </div>
-            
-            <div class="modal-actions">
-                <button id="cryptoDepBack" class="btn-secondary">Retour</button>
-                <button id="cryptoDepSubmit" class="btn-primary">Soumettre le reçu</button>
-            </div>
-        </div>
-    </div>
+    <!-- Modales -->
+    <div id="modalDepositChoice" style="display:none;">...</div>
+    <div id="modalWithdrawChoice" style="display:none;">...</div>
 
-    <!-- MODALE CHOIX DU MODE DE RETRAIT -->
-    <div id="modalWithdrawChoice" class="modal">
-        <div class="modal-content text-center">
-            <h3>Demande de Retrait</h3>
-            <p>Sélectionnez le canal de réception de vos fonds :</p>
-            <div class="choice-buttons">
-                <button id="witChoiceMomo" class="choice-btn momo">Mobile Money</button>
-                <button id="witChoiceCrypto" class="choice-btn crypto">Crypto USDT (TRC20)</button>
-            </div>
-            <button id="witChoiceClose" class="modal-close-btn">Fermer</button>
-        </div>
-    </div>
-
-    <!-- MODALE FORMULAIRE TECHNIQUE DE RETRAIT -->
-    <div id="modalWithdrawForm" class="modal">
-        <div class="modal-content">
-            <h3>Formulaire de Retrait</h3>
-            <div class="form-group">
-                <label for="witAmount">Montant à retirer (FCFA) :</label>
-                <input type="number" id="witAmount" placeholder="Minimum 2 050 FCFA">
-            </div>
-            <div class="form-group">
-                <label for="witRecipient">Coordonnées de destination (Numéro ou Adresse Crypto) :</label>
-                <input type="text" id="witRecipient" placeholder="Ex: +226XXXXXXXX ou Adresse Wallet">
-            </div>
-            <div class="form-group">
-                <label for="witPin">Code PIN de transaction :</label>
-                <input type="password" id="witPin" maxlength="4" placeholder="Code à 4 chiffres">
-            </div>
-            <div class="modal-actions">
-                <button id="witFormBack" class="btn-secondary">Retour</button>
-                <button id="witFormSubmit" class="btn-primary">Confirmer le retrait</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODALE FORMULAIRE DE TRANSFERT INTER-COMPTE -->
-    <div id="modalTransferForm" class="modal">
-        <div class="modal-content">
-            <h3>Transfert Inter-compte</h3>
-            <p class="instructions">Envoyez instantanément des fonds à un autre utilisateur du réseau grâce à son identifiant unique (UID).</p>
-            <div class="form-group">
-                <label for="transTargetId">ID Firebase (UID) du destinataire :</label>
-                <input type="text" id="transTargetId" placeholder="Collez l'ID exact">
-            </div>
-            <div class="form-group">
-                <label for="transAmount">Montant du transfert (FCFA) :</label>
-                <input type="number" id="transAmount" placeholder="Ex: 2500">
-            </div>
-            <div class="form-group">
-                <label for="transPin">Votre code PIN de transaction :</label>
-                <input type="password" id="transPin" maxlength="4" placeholder="PIN de sécurité">
-            </div>
-            <div class="modal-actions">
-                <button id="transClose" class="btn-secondary">Annuler</button>
-                <button id="transSubmit" class="btn-primary">Valider le transfert</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- CHARGEMENT DU SCRIPT LOGICIEL -->
+    <!-- LE FICHIER JS EST ICI (Important : type="module") -->
     <script type="module" src="app.js"></script>
 </body>
 </html>
