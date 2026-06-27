@@ -1,83 +1,73 @@
 // =========================================================================
-// FONCTION DE MISE À JOUR SÉCURISÉE DES STATISTIQUES (PRÉSERVE LE DESIGN)
+// CORRECTION : SYNCHRONISATION DES STATISTIQUES DU TABLEAU DE BORD (DASHBOARD)
 // =========================================================================
 async function refreshDashboardMetrics(uid) {
     try {
+        // Récupération du document de l'utilisateur dans Firestore
         const userDoc = await getDoc(doc(db, "users", uid));
+        
         if (userDoc.exists()) {
             const data = userDoc.data();
+            
+            // Stockage global sécurisé du code PIN
             userTransactionPin = data.transactionPin || "1234";
 
-            // 1. MISE À JOUR DES STATISTIQUES DE LA PAGE PRINCIPALE (Image 149979.jpg)
-            // On cible uniquement le texte pour ne pas supprimer les styles CSS des cartes
-            const balanceEl = document.getElementById('mainBalance');
-            if (balanceEl) balanceEl.innerText = `${data.balance || 0} FCFA`;
+            // 1. MISE À JOUR DES STATISTIQUES PRINCIPALES (Image 149979.jpg)
+            const mainBalanceEl = document.getElementById('user-balance');
+            if (mainBalanceEl) mainBalanceEl.innerText = `${data.balance || 0} FCFA`;
 
-            const packsEl = document.getElementById('mainActivePacks');
-            if (packsEl) packsEl.innerText = data.activePacksCount || 0;
+            const activePacksEl = document.getElementById('active-packs');
+            if (activePacksEl) activePacksEl.innerText = data.activePacksCount || 0;
 
-            const profitEl = document.getElementById('mainDailyProfit');
-            // Calcule ou affiche directement le revenu journalier (ex: 2000 FCFA)
-            if (profitEl) profitEl.innerText = `${data.dailyProfit || 0} FCFA`;
+            const dailyProfitEl = document.getElementById('daily-profit');
+            if (dailyProfitEl) dailyProfitEl.innerText = `${data.dailyProfit || 0} FCFA`;
 
 
-            // 2. MISE À JOUR DU PANNEAU LATÉRAL / SIDEBAR (Image 149980.jpg)
-            
-            // Pseudo : On change le texte du pseudo "KAZOS" sans toucher au bouton crayon ou au drapeau
-            const usernameEl = document.getElementById('sbUsername');
+            // 2. MISE À JOUR DU PROFIL DANS LA SIDEBAR (Image 149980.jpg)
+            // .innerText préserve l'émoji crayon ✏️ qui est en dehors de cette balise span/div
+            const usernameEl = document.getElementById('profile-display-name');
             if (usernameEl) usernameEl.innerText = data.username || "KAZOS";
 
-            // ID Unique
-            const uidEl = document.getElementById('sbUid');
-            if (uidEl) uidEl.innerText = `ID : ${uid}`;
+            const uidEl = document.getElementById('profile-display-id');
+            if (uidEl) uidEl.innerText = uid;
 
-            // Solde dans la Sidebar
-            const sbBalanceEl = document.getElementById('sbBalance');
-            if (sbBalanceEl) sbBalanceEl.innerText = `${data.balance || 0} FCFA`;
-
-            // Email de connexion en bas
-            const emailEl = document.getElementById('sbUserEmail');
-            if (emailEl) emailEl.innerText = auth.currentUser ? auth.currentUser.email : "...";
+            const sidebarBalanceEl = document.getElementById('profile-display-balance');
+            if (sidebarBalanceEl) sidebarBalanceEl.innerText = `${data.balance || 0} FCFA`;
 
 
-            // 3. CORRECTION DE L'AVATAR (Image 149980.jpg)
-            // On cible la balise <img> à l'intérieur pour changer la photo sans supprimer le bouton appareil photo
-            const avatarImg = document.querySelector('#sbAvatar img') || document.getElementById('userAvatarSrc');
+            // 3. MISE À JOUR SÉCURISÉE DE L'AVATAR (Image 149980.jpg)
+            // On change uniquement la source (.src) de l'image. Le bouton photo 📷 reste inchangé.
+            const avatarImg = document.getElementById('user-profile-img');
             if (avatarImg && data.avatarUrl && data.avatarUrl.trim() !== "") {
                 avatarImg.src = data.avatarUrl;
             }
 
 
-            // 4. LIEN D'AFFILIATION DYNAMIQUE (Netlify / Vercel)
-            const refLinkInput = document.getElementById('sbRefLink');
-            if (refLinkInput) {
-                const currentHost = window.location.origin; // Capte automatiquement https://v226.netlify.app
-                refLinkInput.value = `${currentHost}/?ref=${uid}`;
+            // 4. LIEN D'AFFILIATION DYNAMIQUE (Génère le lien selon l'hébergeur actuel)
+            const referralInput = document.getElementById('referral-link');
+            if (referralInput) {
+                const currentHost = window.location.origin; // Récupère https://v226.netlify.app ou localhost
+                referralInput.value = `${currentHost}/?ref=${uid}`;
             }
         }
-    } catch (e) { 
-        console.error("Erreur lors de la synchronisation des données :", e); 
+    } catch (error) {
+        console.error("Erreur lors du rafraîchissement des données :", error);
     }
 }
 
 // =========================================================================
-// ÉCOUTEUR D'ÉVÉNEMENT POUR L'IMPORTATION DE L'AVATAR DEPUIS LA GALERIE
+// ÉCOUTEUR D'ÉVÉNEMENT : CHANGEMENT DE LA PHOTO DE PROFIL
 // =========================================================================
 document.addEventListener("DOMContentLoaded", () => {
-    // Écouteur sur le bouton de l'appareil photo violet (sbAvatarEdit)
-    const avatarEditBtn = document.getElementById('sbAvatarEdit');
-    const avatarFileInput = document.getElementById('avatarFileInput');
+    const avatarFileInput = document.getElementById('avatar-input-file');
+    const avatarImg = document.getElementById('user-profile-img');
 
-    if (avatarEditBtn && avatarFileInput) {
-        // Au clic sur l'appareil photo, on ouvre la galerie du téléphone
-        avatarEditBtn.addEventListener('click', () => {
-            avatarFileInput.click();
-        });
-
-        // Dès qu'une image est choisie
+    if (avatarFileInput) {
+        // Cet écouteur se déclenche dès que l'utilisateur sélectionne une image dans sa galerie
         avatarFileInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (file) {
+                // Validation simple du type de fichier
                 if (!file.type.startsWith('image/')) {
                     alert("Veuillez sélectionner un fichier image valide.");
                     return;
@@ -86,16 +76,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 const reader = new FileReader();
                 reader.onload = async (e) => {
                     const base64Image = e.target.result;
-                    if (currentUserUid) {
+                    
+                    // Si l'utilisateur est bien connecté, on sauvegarde dans Firestore
+                    if (typeof currentUserUid !== 'undefined' && currentUserUid) {
                         try {
-                            // Sauvegarde dans la base de données Firestore
-                            await updateDoc(doc(db, "users", currentUserUid), { avatarUrl: base64Image });
-                            // Rafraîchissement immédiat de l'affichage
-                            await refreshDashboardMetrics(currentUserUid);
-                            alert("Votre photo de profil a été mise à jour !");
+                            const userRef = doc(db, "users", currentUserUid);
+                            await updateDoc(userRef, { avatarUrl: base64Image });
+                            
+                            // Mise à jour visuelle immédiate
+                            if (avatarImg) avatarImg.src = base64Image;
+                            alert("Votre photo de profil a été mise à jour avec succès !");
                         } catch (err) {
-                            console.error("Erreur d'enregistrement Firebase :", err);
-                            alert("Erreur lors de la sauvegarde de l'image.");
+                            console.error("Erreur Firebase lors de l'enregistrement de l'image :", err);
+                            alert("Impossible de sauvegarder la photo sur le serveur.");
                         }
                     }
                 };
