@@ -19,7 +19,7 @@ let currentUserUid = null;
 let userTransactionPin = "1234";
 let currentSelectedChannel = "";
 
-// FONCTION DE MISE À POUR DES METRICS VISUELLES
+// FONCTION DE MISE À JOUR DES METRICS ET DU PROFIL VISUEL
 async function refreshDashboardMetrics(uid) {
     try {
         const userDoc = await getDoc(doc(db, "users", uid));
@@ -27,13 +27,26 @@ async function refreshDashboardMetrics(uid) {
             const data = userDoc.data();
             userTransactionPin = data.transactionPin || "1234";
 
+            // Mise à jour des blocs financiers
             if(document.getElementById('mainBalance')) document.getElementById('mainBalance').innerText = `${data.balance || 0} FCFA`;
             if(document.getElementById('mainActivePacks')) document.getElementById('mainActivePacks').innerText = data.activePacksCount || 0;
             if(document.getElementById('mainDailyProfit')) document.getElementById('mainDailyProfit').innerText = `${data.dailyProfit || 0} FCFA`;
 
+            // Mise à jour des informations de la sidebar
             if(document.getElementById('sbUsername')) document.getElementById('sbUsername').innerText = data.username || "Utilisateur";
             if(document.getElementById('sbUid')) document.getElementById('sbUid').innerText = `ID : ${uid}`;
             if(document.getElementById('sbBalance')) document.getElementById('sbBalance').innerText = `${data.balance || 0} FCFA`;
+            
+            // ÉTAPE NOUVELLE : Gestion et affichage dynamique de l'avatar
+            if(document.getElementById('sbAvatar')) {
+                if(data.avatarUrl && data.avatarUrl.trim() !== "") {
+                    // Si l'utilisateur a configuré une URL, on remplace le texte par une image HTML
+                    document.getElementById('sbAvatar').innerHTML = `<img src="${data.avatarUrl}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+                } else {
+                    // Sinon, on laisse l'émoji par défaut
+                    document.getElementById('sbAvatar').innerHTML = "👤";
+                }
+            }
             
             if(auth.currentUser && document.getElementById('sbUserEmail')) {
                 document.getElementById('sbUserEmail').innerText = auth.currentUser.email;
@@ -84,6 +97,24 @@ document.addEventListener("DOMContentLoaded", () => {
                     await refreshDashboardMetrics(currentUserUid);
                 } catch(err) {
                     alert("Erreur lors du changement de nom.");
+                }
+            }
+        });
+    }
+
+    // NOUVEL ÉCOUTEUR : Changement de la photo de profil (Avatar)
+    if(document.getElementById('sbAvatarEdit')) {
+        document.getElementById('sbAvatarEdit').addEventListener('click', async () => {
+            const newAvatarUrl = prompt("Entrez l'URL de votre nouvelle photo de profil (ex: https://lien-de-votre-image.jpg) :");
+            if(newAvatarUrl && newAvatarUrl.trim() !== "" && currentUserUid) {
+                try {
+                    // Sauvegarde du lien dans la fiche de l'utilisateur sur Firestore
+                    await updateDoc(doc(db, "users", currentUserUid), { avatarUrl: newAvatarUrl.trim() });
+                    // Rafraîchissement immédiat de l'interface
+                    await refreshDashboardMetrics(currentUserUid);
+                    alert("Photo de profil mise à jour avec succès !");
+                } catch(err) {
+                    alert("Erreur lors de la mise à jour de la photo de profil.");
                 }
             }
         });
@@ -308,7 +339,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function updateCountdown() {
         const now = new Date();
         const nextPayout = new Date();
-        nextPayout.setHours(24, 0, 0, 0); // Calcule le minuit de la nuit prochaine
+        nextPayout.setHours(24, 0, 0, 0);
 
         const diff = nextPayout - now;
 
