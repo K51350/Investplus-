@@ -1,3 +1,6 @@
+// =========================================================================
+// 1. IMPORTATIONS ET CONFIGURATION FIREBASE
+// =========================================================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, updateDoc, addDoc, collection } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
@@ -11,310 +14,262 @@ const firebaseConfig = {
     appId: "1:190480009995:web:eff1dd2b4703256fdd700e"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// Initialisation avec gestion d'erreur basique
+let app, auth, db;
+try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    console.log("✅ Firebase initialisé avec succès !");
+} catch (error) {
+    console.error("❌ Erreur critique lors de l'initialisation de Firebase :", error);
+}
 
 let currentUserUid = null;
 let userTransactionPin = "1234";
 let currentSelectedChannel = "";
 
-// FONCTION DE MISE À JOUR DES METRICS ET DU PROFIL VISUEL
+// =========================================================================
+// 2. FONCTION DE MISE À JOUR DU TABLEAU DE BORD
+// =========================================================================
 async function refreshDashboardMetrics(uid) {
     try {
         const userDoc = await getDoc(doc(db, "users", uid));
+        
         if (userDoc.exists()) {
             const data = userDoc.data();
             userTransactionPin = data.transactionPin || "1234";
 
-            // Mise à jour des blocs financiers
-            if(document.getElementById('mainBalance')) document.getElementById('mainBalance').innerText = `${data.balance || 0} FCFA`;
-            if(document.getElementById('mainActivePacks')) document.getElementById('mainActivePacks').innerText = data.activePacksCount || 0;
-            if(document.getElementById('mainDailyProfit')) document.getElementById('mainDailyProfit').innerText = `${data.dailyProfit || 0} FCFA`;
+            // Sécurisation de l'affichage avec des vérifications
+            const updateElement = (id, text) => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = text;
+            };
 
-            // Mise à jour des informations de la sidebar
-            if(document.getElementById('sbUsername')) document.getElementById('sbUsername').innerText = data.username || "Utilisateur";
-            if(document.getElementById('sbUid')) document.getElementById('sbUid').innerText = `ID : ${uid}`;
-            if(document.getElementById('sbBalance')) document.getElementById('sbBalance').innerText = `${data.balance || 0} FCFA`;
+            // Blocs financiers
+            updateElement('mainBalance', `${data.balance || 0} FCFA`);
+            updateElement('mainActivePacks', data.activePacksCount || 0);
+            updateElement('mainDailyProfit', `${data.dailyProfit || 0} FCFA`);
+
+            // Informations de la sidebar
+            updateElement('sbUsername', data.username || "Utilisateur");
+            updateElement('sbUid', `ID : ${uid}`);
+            updateElement('sbBalance', `${data.balance || 0} FCFA`);
             
-            // ÉTAPE NOUVELLE : Gestion et affichage dynamique de l'avatar
-            if(document.getElementById('sbAvatar')) {
-                if(data.avatarUrl && data.avatarUrl.trim() !== "") {
-                    // Si l'utilisateur a configuré une URL, on remplace le texte par une image HTML
-                    document.getElementById('sbAvatar').innerHTML = `<img src="${data.avatarUrl}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+            if (auth.currentUser) updateElement('sbUserEmail', auth.currentUser.email);
+
+            // Gestion de l'Avatar
+            const avatarContainer = document.getElementById('sbAvatar');
+            if (avatarContainer) {
+                if (data.avatarUrl && data.avatarUrl.trim() !== "") {
+                    avatarContainer.innerHTML = `<img src="${data.avatarUrl}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;" alt="Avatar">`;
                 } else {
-                    // Sinon, on laisse l'émoji par défaut
-                    document.getElementById('sbAvatar').innerHTML = "👤";
+                    avatarContainer.innerHTML = "👤";
                 }
             }
             
-            if(auth.currentUser && document.getElementById('sbUserEmail')) {
-                document.getElementById('sbUserEmail').innerText = auth.currentUser.email;
+            // Lien d'affiliation (Adaptation automatique)
+            const refInput = document.getElementById('sbRefLink');
+            if (refInput) {
+                refInput.value = `${window.location.origin}/?ref=${uid}`;
             }
-            
-            if(document.getElementById('sbRefLink')) {
-                document.getElementById('sbRefLink').value = `https://cash-flow226.netlify.app/?ref=${uid}`;
-            }
+        } else {
+            console.warn("⚠️ Le document utilisateur n'existe pas dans Firestore.");
         }
     } catch (e) { 
-        console.error("Erreur durant le rafraîchissement des compteurs :", e); 
+        console.error("❌ Erreur de récupération des données depuis Firestore :", e); 
+        alert("Problème de connexion avec la base de données.");
     }
 }
 
-// SURVEILLANCE DE L'ÉTAT DE CONNEXION
+// =========================================================================
+// 3. GESTION DE LA SESSION UTILISATEUR
+// =========================================================================
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         currentUserUid = user.uid;
+        console.log("✅ Utilisateur connecté :", user.uid);
+        
+        // Attendre que le HTML soit prêt avant d'injecter les données
         if (document.readyState === "loading") {
             document.addEventListener("DOMContentLoaded", () => refreshDashboardMetrics(user.uid));
         } else {
             await refreshDashboardMetrics(user.uid);
         }
     } else {
+        console.log("⚠️ Aucun utilisateur connecté. Redirection...");
         window.location.href = "index.html";
     }
 });
 
-// COMPORTEMENTS ET GESTIONNAIRES DE REQUÊTES
+// =========================================================================
+// 4. ÉVÉNEMENTS D'INTERFACE ET BOUTONS
+// =========================================================================
 document.addEventListener("DOMContentLoaded", () => {
     const sidebar = document.getElementById('mainSidebar');
 
-    // Menu coulissant latéral
-    if(document.getElementById('sidebarOpenBtn')) {
-        document.getElementById('sidebarOpenBtn').addEventListener('click', () => sidebar.classList.add('open'));
-    }
-    if(document.getElementById('sidebarCloseBtn')) {
-        document.getElementById('sidebarCloseBtn').addEventListener('click', () => sidebar.classList.remove('open'));
-    }
-
-    // Modification du pseudo
-    if(document.getElementById('sbUsernameEdit')) {
-        document.getElementById('sbUsernameEdit').addEventListener('click', async () => {
-            const newName = prompt("Entrez votre nouveau nom d'affichage :");
-            if(newName && newName.trim() !== "" && currentUserUid) {
-                try {
-                    await updateDoc(doc(db, "users", currentUserUid), { username: newName.trim() });
-                    await refreshDashboardMetrics(currentUserUid);
-                } catch(err) {
-                    alert("Erreur lors du changement de nom.");
-                }
-            }
-        });
-    }
-
-    // NOUVEL ÉCOUTEUR : Changement de la photo de profil (Avatar)
-    if(document.getElementById('sbAvatarEdit')) {
-        document.getElementById('sbAvatarEdit').addEventListener('click', async () => {
-            const newAvatarUrl = prompt("Entrez l'URL de votre nouvelle photo de profil (ex: https://lien-de-votre-image.jpg) :");
-            if(newAvatarUrl && newAvatarUrl.trim() !== "" && currentUserUid) {
-                try {
-                    // Sauvegarde du lien dans la fiche de l'utilisateur sur Firestore
-                    await updateDoc(doc(db, "users", currentUserUid), { avatarUrl: newAvatarUrl.trim() });
-                    // Rafraîchissement immédiat de l'interface
-                    await refreshDashboardMetrics(currentUserUid);
-                    alert("Photo de profil mise à jour avec succès !");
-                } catch(err) {
-                    alert("Erreur lors de la mise à jour de la photo de profil.");
-                }
-            }
-        });
-    }
-
-    // Copie de lien d'affiliation
-    if(document.getElementById('sbCopyRefBtn')) {
-        document.getElementById('sbCopyRefBtn').addEventListener('click', () => {
-            const copyText = document.getElementById('sbRefLink');
-            if(copyText) {
-                copyText.select();
-                copyText.setSelectionRange(0, 99999);
-                navigator.clipboard.writeText(copyText.value);
-                alert("Lien de parrainage copié !");
-            }
-        });
-    }
-
-    // Bouton Quitter
-    if(document.getElementById('topLogoutBtn')) {
-        document.getElementById('topLogoutBtn').addEventListener('click', async () => {
-            try { await signOut(auth); window.location.href = "index.html"; } catch(e) { window.location.href = "index.html"; }
-        });
-    }
-
-    // Basculeur de fenêtres modales
+    // --- Utilitaires ---
     const toggleModal = (id, action) => {
         const target = document.getElementById(id);
-        if(target) target.style.display = action === 'open' ? 'flex' : 'none';
+        if (target) target.style.display = action === 'open' ? 'flex' : 'none';
     };
 
-    // --- PASSERELLE DE PRÉSENTATION PARTENAIRE (CFSG LTD) ---
-    if(document.getElementById('sbPartnerBtn')) {
-        document.getElementById('sbPartnerBtn').addEventListener('click', () => {
-            if(sidebar) sidebar.classList.remove('open');
-            toggleModal('modalPartnerInfo', 'open');
-        });
-    }
-    if(document.getElementById('partnerInfoClose')) {
-        document.getElementById('partnerInfoClose').addEventListener('click', () => {
-            toggleModal('modalPartnerInfo', 'close');
-        });
-    }
+    const attachClick = (id, callback) => {
+        const btn = document.getElementById(id);
+        if (btn) btn.addEventListener('click', callback);
+    };
 
-    // --- INTERFACE DE DÉPÔT ---
-    if(document.getElementById('sbDepositBtn')) {
-        document.getElementById('sbDepositBtn').addEventListener('click', () => { 
-            if(sidebar) sidebar.classList.remove('open'); 
-            toggleModal('modalDepositChoice', 'open'); 
-        });
-    }
-    if(document.getElementById('depChoiceClose')) {
-        document.getElementById('depChoiceClose').addEventListener('click', () => toggleModal('modalDepositChoice', 'close'));
-    }
-    if(document.getElementById('depChoiceCrypto')) {
-        document.getElementById('depChoiceCrypto').addEventListener('click', () => { 
-            toggleModal('modalDepositChoice', 'close'); 
-            toggleModal('modalDepositCryptoForm', 'open'); 
-        });
-    }
-    if(document.getElementById('cryptoDepBack')) {
-        document.getElementById('cryptoDepBack').addEventListener('click', () => { 
-            toggleModal('modalDepositCryptoForm', 'close'); 
-            toggleModal('modalDepositChoice', 'open'); 
-        });
-    }
-    if(document.getElementById('depChoiceMomo')) {
-        document.getElementById('depChoiceMomo').addEventListener('click', () => {
-            alert("Redirection vers Fusion Money...");
-        });
-    }
+    // --- Menu Latéral ---
+    attachClick('sidebarOpenBtn', () => sidebar?.classList.add('open'));
+    attachClick('sidebarCloseBtn', () => sidebar?.classList.remove('open'));
 
-    if(document.getElementById('cryptoDepSubmit')) {
-        document.getElementById('cryptoDepSubmit').addEventListener('click', async () => {
-            const amountInput = document.getElementById('cryptoDepAmount');
-            const refInput = document.getElementById('cryptoDepRef');
-            if(!amountInput || !refInput) return;
-
-            const amount = parseInt(amountInput.value);
-            const ref = refInput.value.trim();
-            if(!amount || !ref) { alert("Veuillez remplir tous les champs."); return; }
-
+    // --- Profil ---
+    attachClick('sbUsernameEdit', async () => {
+        const newName = prompt("Entrez votre nouveau nom d'affichage :");
+        if (newName && newName.trim() !== "" && currentUserUid) {
             try {
-                await addDoc(collection(db, "deposits"), {
-                    userId: currentUserUid, amount: amount, reference: ref, channel: "Crypto", status: "En attente", createdAt: new Date()
-                });
-                alert("Reçu enregistré !");
-                toggleModal('modalDepositCryptoForm', 'close');
-                amountInput.value = ""; refInput.value = "";
-            } catch(e) { alert("Erreur de soumission."); }
-        });
-    }
+                await updateDoc(doc(db, "users", currentUserUid), { username: newName.trim() });
+                await refreshDashboardMetrics(currentUserUid);
+            } catch(err) {
+                console.error("Erreur mise à jour pseudo:", err);
+                alert("Erreur lors du changement de nom.");
+            }
+        }
+    });
 
-    // --- INTERFACE DE RETRAIT ---
-    if(document.getElementById('sbWithdrawBtn')) {
-        document.getElementById('sbWithdrawBtn').addEventListener('click', () => { 
-            if(sidebar) sidebar.classList.remove('open'); 
-            toggleModal('modalWithdrawChoice', 'open'); 
-        });
-    }
-    if(document.getElementById('witChoiceClose')) {
-        document.getElementById('witChoiceClose').addEventListener('click', () => toggleModal('modalWithdrawChoice', 'close'));
-    }
+    attachClick('sbAvatarEdit', async () => {
+        const newAvatarUrl = prompt("Entrez l'URL de votre nouvelle photo de profil :");
+        if (newAvatarUrl && newAvatarUrl.trim() !== "" && currentUserUid) {
+            try {
+                await updateDoc(doc(db, "users", currentUserUid), { avatarUrl: newAvatarUrl.trim() });
+                await refreshDashboardMetrics(currentUserUid);
+                alert("Photo de profil mise à jour avec succès !");
+            } catch(err) {
+                alert("Erreur lors de la mise à jour de la photo de profil.");
+            }
+        }
+    });
+
+    // --- Affiliation ---
+    attachClick('sbCopyRefBtn', () => {
+        const copyText = document.getElementById('sbRefLink');
+        if (copyText) {
+            copyText.select();
+            navigator.clipboard.writeText(copyText.value);
+            alert("Lien de parrainage copié !");
+        }
+    });
+
+    // --- Déconnexion ---
+    attachClick('topLogoutBtn', async () => {
+        try { await signOut(auth); window.location.href = "index.html"; } 
+        catch(e) { window.location.href = "index.html"; }
+    });
+
+    // --- Modales : Dépôt ---
+    attachClick('sbDepositBtn', () => { sidebar?.classList.remove('open'); toggleModal('modalDepositChoice', 'open'); });
+    attachClick('depChoiceClose', () => toggleModal('modalDepositChoice', 'close'));
+    attachClick('depChoiceCrypto', () => { toggleModal('modalDepositChoice', 'close'); toggleModal('modalDepositCryptoForm', 'open'); });
+    attachClick('cryptoDepBack', () => { toggleModal('modalDepositCryptoForm', 'close'); toggleModal('modalDepositChoice', 'open'); });
+    attachClick('depChoiceMomo', () => alert("Redirection vers Fusion Money..."));
+
+    attachClick('cryptoDepSubmit', async () => {
+        const amountInput = document.getElementById('cryptoDepAmount');
+        const refInput = document.getElementById('cryptoDepRef');
+        if (!amountInput || !refInput) return;
+
+        const amount = parseInt(amountInput.value);
+        const ref = refInput.value.trim();
+        if (!amount || !ref) return alert("Veuillez remplir tous les champs.");
+
+        try {
+            await addDoc(collection(db, "deposits"), {
+                userId: currentUserUid, amount, reference: ref, channel: "Crypto", status: "En attente", createdAt: new Date()
+            });
+            alert("Reçu enregistré !");
+            toggleModal('modalDepositCryptoForm', 'close');
+            amountInput.value = ""; refInput.value = "";
+        } catch(e) { console.error(e); alert("Erreur de soumission."); }
+    });
+
+    // --- Modales : Retrait ---
+    attachClick('sbWithdrawBtn', () => { sidebar?.classList.remove('open'); toggleModal('modalWithdrawChoice', 'open'); });
+    attachClick('witChoiceClose', () => toggleModal('modalWithdrawChoice', 'close'));
 
     const openWithdrawalForm = (channelName) => {
         currentSelectedChannel = channelName;
         toggleModal('modalWithdrawChoice', 'close');
         toggleModal('modalWithdrawForm', 'open');
     };
-    if(document.getElementById('witChoiceMomo')) document.getElementById('witChoiceMomo').addEventListener('click', () => openWithdrawalForm("Mobile Money"));
-    if(document.getElementById('witChoiceCrypto')) document.getElementById('witChoiceCrypto').addEventListener('click', () => openWithdrawalForm("Crypto"));
-    if(document.getElementById('witFormBack')) document.getElementById('witFormBack').addEventListener('click', () => { toggleModal('modalWithdrawForm', 'close'); toggleModal('modalWithdrawChoice', 'open'); });
 
-    if(document.getElementById('witFormSubmit')) {
-        document.getElementById('witFormSubmit').addEventListener('click', async () => {
-            const amountInput = document.getElementById('witAmount');
-            const recipientInput = document.getElementById('witRecipient');
-            const pinInput = document.getElementById('witPin');
-            if(!amountInput || !recipientInput || !pinInput) return;
+    attachClick('witChoiceMomo', () => openWithdrawalForm("Mobile Money"));
+    attachClick('witChoiceCrypto', () => openWithdrawalForm("Crypto"));
+    attachClick('witFormBack', () => { toggleModal('modalWithdrawForm', 'close'); toggleModal('modalWithdrawChoice', 'open'); });
 
-            const amount = parseInt(amountInput.value);
-            const recipient = recipientInput.value.trim();
-            const pin = pinInput.value.trim();
+    attachClick('witFormSubmit', async () => {
+        const amount = parseInt(document.getElementById('witAmount')?.value);
+        const recipient = document.getElementById('witRecipient')?.value.trim();
+        const pin = document.getElementById('witPin')?.value.trim();
 
-            if(amount < 2050) { alert("Minimum de retrait : 2 050 FCFA"); return; }
-            if(pin !== userTransactionPin) { alert("PIN de transaction incorrect."); return; }
+        if (amount < 2050) return alert("Minimum de retrait : 2 050 FCFA");
+        if (pin !== userTransactionPin) return alert("PIN de transaction incorrect.");
 
-            try {
-                const userRef = doc(db, "users", currentUserUid);
-                const snap = await getDoc(userRef);
-                const bal = snap.data().balance || 0;
+        try {
+            const userRef = doc(db, "users", currentUserUid);
+            const bal = (await getDoc(userRef)).data().balance || 0;
 
-                if(bal < amount) { alert("Solde insuffisant."); return; }
+            if (bal < amount) return alert("Solde insuffisant.");
 
-                await updateDoc(userRef, { balance: bal - amount });
-                await addDoc(collection(db, "withdrawals"), {
-                    userId: currentUserUid, amount: amount, destination: recipient, channel: currentSelectedChannel, status: "En attente", createdAt: new Date()
-                });
+            await updateDoc(userRef, { balance: bal - amount });
+            await addDoc(collection(db, "withdrawals"), {
+                userId: currentUserUid, amount, destination: recipient, channel: currentSelectedChannel, status: "En attente", createdAt: new Date()
+            });
 
-                alert("Retrait envoyé à la validation !");
-                toggleModal('modalWithdrawForm', 'close');
-                amountInput.value = ""; recipientInput.value = ""; pinInput.value = "";
-                await refreshDashboardMetrics(currentUserUid);
-            } catch(e) { alert("Erreur système lors du retrait."); }
-        });
-    }
+            alert("Retrait envoyé à la validation !");
+            toggleModal('modalWithdrawForm', 'close');
+            await refreshDashboardMetrics(currentUserUid);
+        } catch(e) { console.error(e); alert("Erreur système lors du retrait."); }
+    });
 
-    // --- INTERFACE DE TRANSFERT INTER-COMPTE ---
-    if(document.getElementById('sbTransferBtn')) {
-        document.getElementById('sbTransferBtn').addEventListener('click', () => { 
-            if(sidebar) sidebar.classList.remove('open'); 
-            toggleModal('modalTransferForm', 'open'); 
-        });
-    }
-    if(document.getElementById('transClose')) document.getElementById('transClose').addEventListener('click', () => toggleModal('modalTransferForm', 'close'));
+    // --- Modales : Transfert ---
+    attachClick('sbTransferBtn', () => { sidebar?.classList.remove('open'); toggleModal('modalTransferForm', 'open'); });
+    attachClick('transClose', () => toggleModal('modalTransferForm', 'close'));
 
-    if(document.getElementById('transSubmit')) {
-        document.getElementById('transSubmit').addEventListener('click', async () => {
-            const targetInput = document.getElementById('transTargetId');
-            const amountInput = document.getElementById('transAmount');
-            const pinInput = document.getElementById('transPin');
-            if(!targetInput || !amountInput || !pinInput) return;
+    attachClick('transSubmit', async () => {
+        const targetId = document.getElementById('transTargetId')?.value.trim();
+        const amount = parseInt(document.getElementById('transAmount')?.value);
+        const pin = document.getElementById('transPin')?.value.trim();
 
-            const targetId = targetInput.value.trim();
-            const amount = parseInt(amountInput.value);
-            const pin = pinInput.value.trim();
+        if (!targetId || !amount || pin !== userTransactionPin) return alert("Champs invalides ou mauvais PIN.");
+        if (targetId === currentUserUid) return alert("Action non autorisée sur soi-même.");
 
-            if(!targetId || !amount || pin !== userTransactionPin) { alert("Champs invalides ou mauvais PIN."); return; }
-            if(targetId === currentUserUid) { alert("Action non autorisée sur soi-même."); return; }
+        try {
+            const userRef = doc(db, "users", currentUserUid);
+            const targetRef = doc(db, "users", targetId);
+            
+            const senderSnap = await getDoc(userRef);
+            const targetSnap = await getDoc(targetRef);
 
-            try {
-                const userRef = doc(db, "users", currentUserUid);
-                const userSnap = await getDoc(userRef);
-                const senderBalance = userSnap.data().balance || 0;
+            if (!targetSnap.exists()) return alert("ID destinataire invalide.");
+            if ((senderSnap.data().balance || 0) < amount) return alert("Fonds insuffisants.");
 
-                if(senderBalance < amount) { alert("Fonds insuffisants."); return; }
+            await updateDoc(userRef, { balance: (senderSnap.data().balance || 0) - amount });
+            await updateDoc(targetRef, { balance: (targetSnap.data().balance || 0) + amount });
 
-                const targetRef = doc(db, "users", targetId);
-                const targetSnap = await getDoc(targetRef);
-                if(!targetSnap.exists()) { alert("ID destinataire invalide."); return; }
+            alert("Transfert instantané validé !");
+            toggleModal('modalTransferForm', 'close');
+            await refreshDashboardMetrics(currentUserUid);
+        } catch(e) { console.error(e); alert("Échec lors de la transaction."); }
+    });
 
-                await updateDoc(userRef, { balance: senderBalance - amount });
-                await updateDoc(targetRef, { balance: (targetSnap.data().balance || 0) + amount });
-
-                alert("Transfert instantané validé !");
-                toggleModal('modalTransferForm', 'close');
-                targetInput.value = ""; amountInput.value = ""; pinInput.value = "";
-                await refreshDashboardMetrics(currentUserUid);
-            } catch(e) { alert("Échec lors de la transaction."); }
-        });
-    }
-
-    // --- FONCTIONNALITÉ D'ACHAT DE ROBOTS ---
+    // --- Achat de Robots ---
     async function executePackPurchase(packName, price, dailyRevenue) {
         try {
             const userRef = doc(db, "users", currentUserUid);
             const userSnap = await getDoc(userRef);
             const currentBalance = userSnap.data().balance || 0;
 
-            if (currentBalance < price) { alert("Solde insuffisant."); return; }
+            if (currentBalance < price) return alert("Solde insuffisant.");
 
             await updateDoc(userRef, {
                 balance: currentBalance - price,
@@ -323,46 +278,39 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             await addDoc(collection(db, "purchases"), {
-                userId: currentUserUid, packName: packName, price: price, purchasedAt: new Date()
+                userId: currentUserUid, packName, price, purchasedAt: new Date()
             });
 
             alert(`Activation réussie pour le ${packName} !`);
             await refreshDashboardMetrics(currentUserUid);
-        } catch (err) { alert("Impossible de finaliser l'achat."); }
+        } catch (err) { console.error(err); alert("Impossible de finaliser l'achat."); }
     }
 
-    if(document.getElementById('buyViperBtn')) document.getElementById('buyViperBtn').addEventListener('click', () => executePackPurchase("Viper Bot", 2000, 100));
-    if(document.getElementById('buyExtincteurBtn')) document.getElementById('buyExtincteurBtn').addEventListener('click', () => executePackPurchase("Extincteur Bot", 4000, 220));
-    if(document.getElementById('buyCycloneBtn')) document.getElementById('buyCycloneBtn').addEventListener('click', () => executePackPurchase("Cyclone Bot", 10000, 600));
+    attachClick('buyViperBtn', () => executePackPurchase("Viper Bot", 2000, 100));
+    attachClick('buyExtincteurBtn', () => executePackPurchase("Extincteur Bot", 4000, 220));
+    attachClick('buyCycloneBtn', () => executePackPurchase("Cyclone Bot", 10000, 600));
 
-    // --- COMPTEUR TEMPOREL AUTOMATIQUE 24 HEURES ---
+    // --- Compteur 24h ---
     function updateCountdown() {
+        const counterEl = document.getElementById('countdownTimer');
+        if (!counterEl) return;
+
         const now = new Date();
         const nextPayout = new Date();
         nextPayout.setHours(24, 0, 0, 0);
-
         const diff = nextPayout - now;
 
         if (diff <= 0) {
-            if(document.getElementById('countdownTimer')) {
-                document.getElementById('countdownTimer').innerText = "Distribution en cours...";
-            }
+            counterEl.innerText = "Distribution en cours...";
             return;
         }
 
-        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-        const formatH = hours < 10 ? "0" + hours : hours;
-        const formatM = minutes < 10 ? "0" + minutes : minutes;
-        const formatS = seconds < 10 ? "0" + seconds : seconds;
-
-        if(document.getElementById('countdownTimer')) {
-            document.getElementById('countdownTimer').innerText = `${formatH}h ${formatM}m ${formatS}s`;
-        }
+        const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const s = Math.floor((diff % (1000 * 60)) / 1000);
+        counterEl.innerText = `${h.toString().padStart(2, '0')}h ${m.toString().padStart(2, '0')}m ${s.toString().padStart(2, '0')}s`;
     }
 
-    updateCountdown();
     setInterval(updateCountdown, 1000);
+    updateCountdown();
 });
