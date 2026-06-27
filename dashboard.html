@@ -3,136 +3,234 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cashflow - Tableau de Bord</title>
-    <style>
-        :root {
-            --bg-primary: #0a0e17;
-            --bg-secondary: #131c2e;
-            --bg-card: #1b273d;
-            --accent-neon: #00f2fe;
-            --accent-purple: #9b51e0;
-            --accent-green: #00e676;
-            --accent-wave: #1cd0f9;
-            --text-main: #ffffff;
-            --text-muted: #8fa0bc;
-            --border-color: #26354e;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; transition: background-color 0.2s ease, color 0.2s ease; }
-        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg-primary); color: var(--text-main); padding-bottom: 60px; overflow-x: hidden; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 15px; position: relative; }
-        
-        /* Boutons et Menu */
-        .menu-trigger { position: absolute; top: 15px; left: 15px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; background: var(--bg-secondary); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); z-index: 90; backdrop-filter: blur(4px); }
-        .menu-trigger span { width: 5px; height: 5px; background-color: var(--accent-neon); border-radius: 50%; }
-        .btn-logout { background: #ff3b30; color: white; padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; float: right; margin-bottom: 15px; font-weight: bold; font-size: 0.85rem; position: relative; z-index: 90; }
-        
-        /* En-tête */
-        .compact-header { background: linear-gradient(to bottom, rgba(15, 23, 42, 0.4), rgba(19, 28, 46, 0.95)), url('Acodejpg/header.jpg'); background-size: cover; background-position: center; border: 1px solid var(--border-color); border-radius: 12px; padding: 25px 15px; text-align: center; margin-bottom: 20px; margin-top: 45px; clear: both; }
-        .header-title { font-size: 1.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #ffffff; }
-        .header-subtitle { color: var(--accent-neon); font-size: 0.85rem; font-weight: 600; margin-top: 4px; }
-
-        /* Galerie et Statistiques */
-        .company-gallery { display: flex; gap: 12px; margin-bottom: 25px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
-        .gallery-card { flex: 0 0 260px; scroll-snap-align: start; background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; position: relative; }
-        .gallery-card img { width: 100%; height: 145px; object-fit: cover; display: block; }
-        .gallery-label { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(19, 28, 46, 0.9); padding: 7px; font-size: 0.75rem; color: var(--accent-neon); font-weight: bold; text-align: center; }
-
-        .account-bar { display: flex; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 12px; margin-bottom: 15px; justify-content: space-around; text-align: center; }
-        .stat-label { display: block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 3px; }
-        .stat-value { font-size: 1.15rem; font-weight: bold; color: var(--accent-neon); }
-        .stat-value.profit { color: var(--accent-green); }
-
-        /* Sidebar et Profil */
-        .sidebar { position: fixed; top: 0; left: -340px; width: 300px; height: 100%; background-color: var(--bg-secondary); border-right: 2px solid var(--border-color); z-index: 150; padding: 25px 15px; box-shadow: 5px 0 25px rgba(0,0,0,0.5); transition: left 0.3s ease; overflow-y: auto; display: flex; flex-direction: column; }
-        .sidebar.open { left: 0; }
-        .sidebar-close { text-align: right; font-size: 1.3rem; cursor: pointer; color: var(--text-muted); margin-bottom: 5px; }
-        
-        .sidebar-profile-box { text-align: center; padding: 15px 10px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 15px; }
-        .profile-avatar-wrapper { position: relative; width: 75px; height: 75px; margin: 0 auto 10px auto; }
-        .profile-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-neon); background-color: var(--bg-primary); }
-        .avatar-upload-btn { position: absolute; bottom: 0; right: 0; background: var(--accent-purple); border: none; border-radius: 50%; width: 24px; height: 24px; color: white; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .profile-username { font-size: 1rem; font-weight: bold; color: var(--text-main); }
-        .profile-id-badge { display: inline-block; font-family: monospace; font-size: 0.7rem; color: var(--accent-wave); background: rgba(28, 208, 249, 0.1); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(28, 208, 249, 0.2); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 5px; }
-        
-        .sidebar-section { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; margin-bottom: 15px; }
-        .sidebar-title { font-size: 0.85rem; color: var(--accent-neon); font-weight: bold; margin-bottom: 8px; text-transform: uppercase; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; }
-        .menu-actions-btn { width: 100%; padding: 10px; border: none; border-radius: 6px; font-weight: bold; margin-bottom: 8px; cursor: pointer; text-transform: uppercase; font-size: 0.8rem; }
-        .btn-sidebar-dep { background: linear-gradient(90deg, #00e676, #00b0ff); color: #0a0e17; }
-        .btn-sidebar-wit { background: rgba(128,128,128,0.1); color: var(--text-main); border: 1px solid var(--border-color); }
-        .btn-sidebar-trans { background: linear-gradient(90deg, #9b51e0, #00f2fe); color: white; }
-
-        .referral-code-zone { display: flex; gap: 6px; margin-top: 8px; }
-        .referral-input { flex: 1; background: var(--bg-primary); border: 1px solid var(--border-color); padding: 6px; border-radius: 6px; color: var(--accent-neon); font-family: monospace; font-size: 0.8rem; text-align: center; outline: none; }
-        .btn-copy { background: var(--accent-purple); color: white; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.8rem; }
-
-        /* Modales */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(10, 14, 23, 0.8); backdrop-filter: blur(4px); z-index: 200; justify-content: center; align-items: center; padding: 10px; }
-        .modal-content { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; width: 100%; max-width: 420px; text-align: center; }
-        .modal-input { width: 100%; padding: 12px; margin-bottom: 12px; background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-main); text-align: center; outline: none; border: 1px solid var(--border-color);}
-        .btn-modal-close { background-color: #445674; color: white; padding: 10px; border: none; border-radius: 6px; width: 100%; font-weight: bold; cursor: pointer; }
-        .modal-buttons { display: flex; gap: 10px; margin-top: 8px; }
-
-        /* Toasts Notifications */
-        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 999; display: flex; flex-direction: column; gap: 10px; }
-        .toast { background: var(--bg-secondary); border-left: 4px solid var(--accent-neon); color: var(--text-main); padding: 12px 20px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 0.9rem; }
-    </style>
+    <title>CashFlow - Tableau de Bord</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div id="toast-container"></div>
+    <!-- BARRE SUPÉRIEURE (TOPBAR) -->
+    <header class="topbar">
+        <button id="sidebarOpenBtn" class="menu-btn">☰</button>
+        <div class="logo">Cash<span>Flow</span></div>
+        <button id="topLogoutBtn" class="logout-btn">Déconnexion</button>
+    </header>
 
-    <div class="container">
-        <!-- En-tête -->
-        <div class="menu-trigger" id="menu-open"><span></span><span></span><span></span></div>
-        <button class="btn-logout" id="btn-logout">Quitter</button>
+    <!-- BANDEAU DÉROULANT (TICKER) -->
+    <div class="ticker-wrap">
+        <div class="ticker">
+            🌟 Bienvenue sur CashFlow • Doublez vos gains avec nos configurations de Robots automatisés ! • Retraits instantanés opérationnels 24h/7 • Suivez vos statistiques en temps réel.
+        </div>
+    </div>
 
-        <header class="compact-header">
-            <h1 class="header-title">Cashflow Cloud</h1>
-            <p class="header-subtitle">Propulsé par CASH Financial Services Group</p>
-        </header>
+    <!-- PANNEAU LATÉRAL (SIDEBAR) -->
+    <aside id="mainSidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h3>Mon Profil</h3>
+            <button id="sidebarCloseBtn" class="close-btn">×</button>
+        </div>
+        
+        <div class="profile-section">
+            <div class="avatar-container">
+                <!-- Zone d'affichage de la photo ou de l'émoji de profil -->
+                <div id="sbAvatar" class="avatar-circle">👤</div>
+                
+                <!-- ÉTAPE CLÉ : Sélecteur masqué pour ouvrir la galerie locale sans casser le design -->
+                <input type="file" id="avatarFileInput" accept="image/*" style="display: none;">
+                
+                <!-- Bouton déclencheur pour modifier la photo -->
+                <button id="sbAvatarEdit" class="edit-avatar-btn" title="Changer de photo">📷</button>
+            </div>
+            <div class="username-container">
+                <span id="sbUsername">Chargement...</span>
+                <button id="sbUsernameEdit" class="edit-btn">✏️</button>
+            </div>
+            <p id="sbUserEmail" class="user-email">...</p>
+            <p id="sbUid" class="user-uid">ID : ...</p>
+        </div>
 
-        <!-- Statistiques -->
-        <section class="account-bar">
-            <div><span class="stat-label">Solde Actuel</span><span class="stat-value" id="user-balance">... FCFA</span></div>
-            <div><span class="stat-label">Robots Actifs</span><span class="stat-value" id="active-packs">...</span></div>
-            <div><span class="stat-label">Revenu / Jour</span><span class="stat-value profit" id="daily-profit">... FCFA</span></div>
+        <nav class="sidebar-menu">
+            <button id="sbPartnerBtn" class="menu-item">🤝 Présentation Partenaire</button>
+            <button id="sbDepositBtn" class="menu-item">💰 Effectuer un Dépôt</button>
+            <button id="sbWithdrawBtn" class="menu-item">💸 Retirer des Fonds</button>
+            <button id="sbTransferBtn" class="menu-item">🔄 Transfert Inter-compte</button>
+        </nav>
+
+        <div class="sidebar-footer">
+            <p>Solde de Parrainage : <strong id="sbBalance">0 FCFA</strong></p>
+            <label for="sbRefLink">Votre lien d'invitation :</label>
+            <div class="share-box">
+                <input type="text" id="sbRefLink" readonly value="...">
+                <button id="sbCopyRefBtn">Copier</button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- CONTENU PRINCIPAL DU DASHBOARD -->
+    <main class="dashboard-content">
+        <!-- COMPTEUR GLOBAL (DISTRIBUTION DES PROFITS) -->
+        <section class="countdown-section">
+            <div class="countdown-card">
+                <h3>Prochaine distribution des profits des Robots</h3>
+                <div id="countdownTimer" class="timer">--h --m --s</div>
+            </div>
         </section>
+
+        <!-- GRILLE DES STATISTIQUES FINANCIÈRES (METRICS) -->
+        <section class="metrics-grid">
+            <div class="card balance-card">
+                <h4>Solde Principal</h4>
+                <p id="mainBalance" class="amount">0 FCFA</p>
+            </div>
+            <div class="card packs-card">
+                <h4>Robots Actifs</h4>
+                <p id="mainActivePacks" class="amount">0</p>
+            </div>
+            <div class="card profit-card">
+                <h4>Profit Journalier estimé</h4>
+                <p id="mainDailyProfit" class="amount">0 FCFA</p>
+            </div>
+        </section>
+
+        <!-- BOUTIQUE DE SÉLECTION DES ROBOTS -->
+        <section class="shop-section">
+            <h2>Nos Configurations de Robots</h2>
+            <div class="shop-grid">
+                <!-- ROBOT VIPER -->
+                <div class="shop-card">
+                    <div class="bot-icon">🤖</div>
+                    <h3>Viper Bot</h3>
+                    <p class="price">Prix : 2 000 FCFA</p>
+                    <p class="revenue">Rendement : 100 FCFA / jour</p>
+                    <button id="buyViperBtn" class="buy-btn">Activer le Robot</button>
+                </div>
+                <!-- ROBOT EXTINCTEUR -->
+                <div class="shop-card">
+                    <div class="bot-icon">⚡</div>
+                    <h3>Extincteur Bot</h3>
+                    <p class="price">Prix : 4 000 FCFA</p>
+                    <p class="revenue">Rendement : 220 FCFA / jour</p>
+                    <button id="buyExtincteurBtn" class="buy-btn">Activer le Robot</button>
+                </div>
+                <!-- ROBOT CYCLONE -->
+                <div class="shop-card">
+                    <div class="bot-icon">🌀</div>
+                    <h3>Cyclone Bot</h3>
+                    <p class="price">Prix : 10 000 FCFA</p>
+                    <p class="revenue">Rendement : 600 FCFA / jour</p>
+                    <button id="buyCycloneBtn" class="buy-btn">Activer le Robot</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ==================== FENÊTRES MODALES INTERACTIVES ==================== -->
+
+    <!-- MODALE PRÉSENTATION PARTENAIRE -->
+    <div id="modalPartnerInfo" class="modal">
+        <div class="modal-content">
+            <h3>Partenariat Stratégique CFSG LTD</h3>
+            <p>Nous collaborons étroitement avec la firme internationale <strong>CFSG LTD</strong> pour sécuriser vos investissements sur les marchés de contrats à terme.</p>
+            <p>Chaque robot déployé sur notre plateforme reflète une fraction de puissance algorithmique opérée par leurs serveurs à haute fréquence.</p>
+            <button id="partnerInfoClose" class="modal-close-btn">Fermer la fenêtre</button>
+        </div>
     </div>
 
-    <!-- Menu Latéral (Sidebar) -->
-    <div class="sidebar" id="sidebarMenu">
-        <div class="sidebar-close" id="menu-close">✕</div>
-        
-        <div class="sidebar-profile-box">
-            <div class="profile-avatar-wrapper">
-                <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" id="user-profile-img" class="profile-avatar" alt="Profil">
-                <label for="avatar-input-file" class="avatar-upload-btn">📷</label>
-                <input type="file" id="avatar-input-file" accept="image/*" style="display: none;">
+    <!-- MODALE CHOIX DU MODE DE DÉPÔT -->
+    <div id="modalDepositChoice" class="modal">
+        <div class="modal-content text-center">
+            <h3>Choisir la méthode de dépôt</h3>
+            <div class="choice-buttons">
+                <button id="depChoiceMomo" class="choice-btn momo">Mobile Money (Fusion Money)</button>
+                <button id="depChoiceCrypto" class="choice-btn crypto">Crypto-monnaies (Manuel)</button>
             </div>
-            <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-                <div class="profile-username" id="profile-display-name">Chargement...</div>
-                <button id="btn-edit-username" style="background:none; border:none; cursor:pointer;">✏️</button>
-            </div>
-            <div class="profile-id-badge">ID : <span id="profile-display-id">...</span></div>
+            <button id="depChoiceClose" class="modal-close-btn">Annuler</button>
         </div>
-        
-        <div class="sidebar-section">
-            <div class="sidebar-title">Finances Rapides</div>
-            <button class="menu-actions-btn btn-sidebar-dep" id="open-deposit">➕ Dépôt Auto</button>
-            <button class="menu-actions-btn btn-sidebar-wit" id="open-withdraw">💸 Retrait Auto</button>
-            <button class="menu-actions-btn btn-sidebar-trans" id="open-transfer">🔄 Transfert Inter-compte</button>
-        </div>
+    </div>
 
-        <div class="sidebar-section">
-            <div class="sidebar-title">👥 Affiliation (Gagnez 10%)</div>
-            <div class="referral-code-zone">
-                <input type="text" class="referral-input" id="referral-link" readonly>
-                <button class="btn-copy" id="btn-copy-link">Copier</button>
+    <!-- MODALE FORMULAIRE DÉPÔT CRYPTO -->
+    <div id="modalDepositCryptoForm" class="modal">
+        <div class="modal-content">
+            <h3>Dépôt par Crypto-monnaie</h3>
+            <p class="instructions">Envoyez le montant de votre choix à l'adresse USDT (TRC20) ci-dessous, puis saisissez le montant en FCFA et le code de référence de la transaction.</p>
+            <div class="address-box">TR7NHqjeKQxGTCi8q8XYZi4v1A6jZ...</div>
+            
+            <div class="form-group">
+                <label for="cryptoDepAmount">Montant équivalent en FCFA :</label>
+                <input type="number" id="cryptoDepAmount" placeholder="Ex: 5000">
+            </div>
+            <div class="form-group">
+                <label for="cryptoDepRef">ID de transaction / Code de référence :</label>
+                <input type="text" id="cryptoDepRef" placeholder="Collez le texte du reçu">
+            </div>
+            
+            <div class="modal-actions">
+                <button id="cryptoDepBack" class="btn-secondary">Retour</button>
+                <button id="cryptoDepSubmit" class="btn-primary">Soumettre le reçu</button>
             </div>
         </div>
     </div>
 
-    <!-- Script Principal -->
+    <!-- MODALE CHOIX DU MODE DE RETRAIT -->
+    <div id="modalWithdrawChoice" class="modal">
+        <div class="modal-content text-center">
+            <h3>Demande de Retrait</h3>
+            <p>Sélectionnez le canal de réception de vos fonds :</p>
+            <div class="choice-buttons">
+                <button id="witChoiceMomo" class="choice-btn momo">Mobile Money</button>
+                <button id="witChoiceCrypto" class="choice-btn crypto">Crypto USDT (TRC20)</button>
+            </div>
+            <button id="witChoiceClose" class="modal-close-btn">Fermer</button>
+        </div>
+    </div>
+
+    <!-- MODALE FORMULAIRE TECHNIQUE DE RETRAIT -->
+    <div id="modalWithdrawForm" class="modal">
+        <div class="modal-content">
+            <h3>Formulaire de Retrait</h3>
+            <div class="form-group">
+                <label for="witAmount">Montant à retirer (FCFA) :</label>
+                <input type="number" id="witAmount" placeholder="Minimum 2 050 FCFA">
+            </div>
+            <div class="form-group">
+                <label for="witRecipient">Coordonnées de destination (Numéro ou Adresse Crypto) :</label>
+                <input type="text" id="witRecipient" placeholder="Ex: +226XXXXXXXX ou Adresse Wallet">
+            </div>
+            <div class="form-group">
+                <label for="witPin">Code PIN de transaction :</label>
+                <input type="password" id="witPin" maxlength="4" placeholder="Code à 4 chiffres">
+            </div>
+            <div class="modal-actions">
+                <button id="witFormBack" class="btn-secondary">Retour</button>
+                <button id="witFormSubmit" class="btn-primary">Confirmer le retrait</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE FORMULAIRE DE TRANSFERT INTER-COMPTE -->
+    <div id="modalTransferForm" class="modal">
+        <div class="modal-content">
+            <h3>Transfert Inter-compte</h3>
+            <p class="instructions">Envoyez instantanément des fonds à un autre utilisateur du réseau grâce à son identifiant unique (UID).</p>
+            <div class="form-group">
+                <label for="transTargetId">ID Firebase (UID) du destinataire :</label>
+                <input type="text" id="transTargetId" placeholder="Collez l'ID exact">
+            </div>
+            <div class="form-group">
+                <label for="transAmount">Montant du transfert (FCFA) :</label>
+                <input type="number" id="transAmount" placeholder="Ex: 2500">
+            </div>
+            <div class="form-group">
+                <label for="transPin">Votre code PIN de transaction :</label>
+                <input type="password" id="transPin" maxlength="4" placeholder="PIN de sécurité">
+            </div>
+            <div class="modal-actions">
+                <button id="transClose" class="btn-secondary">Annuler</button>
+                <button id="transSubmit" class="btn-primary">Valider le transfert</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHARGEMENT DU SCRIPT LOGICIEL -->
     <script type="module" src="app.js"></script>
 </body>
 </html>
