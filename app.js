@@ -1,99 +1,132 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+// Configuration Firebase : Veillez à insérer vos clés d'API ici
+const firebaseConfig = {
+    apiKey: "VOTRE_API_KEY",
+    authDomain: "VOTRE_AUTH_DOMAIN",
+    projectId: "VOTRE_PROJECT_ID",
+    storageBucket: "VOTRE_STORAGE_BUCKET",
+    messagingSenderId: "VOTRE_MESSAGING_SENDER_ID",
+    appId: "VOTRE_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUserUid = null;
+
 // =========================================================================
-// CORRECTION : SYNCHRONISATION DES STATISTIQUES DU TABLEAU DE BORD (DASHBOARD)
+// MISE À JOUR DES DONNÉES EN TEMPS RÉEL (SANS CASSER LE DESIGN)
 // =========================================================================
-async function refreshDashboardMetrics(uid) {
-    try {
-        // Récupération du document de l'utilisateur dans Firestore
-        const userDoc = await getDoc(doc(db, "users", uid));
-        
+function setupDashboardRealtimeSync(uid) {
+    const userRef = doc(db, "users", uid);
+
+    onSnapshot(userRef, (userDoc) => {
         if (userDoc.exists()) {
             const data = userDoc.data();
-            
-            // Stockage global sécurisé du code PIN
-            userTransactionPin = data.transactionPin || "1234";
 
-            // 1. MISE À JOUR DES STATISTIQUES PRINCIPALES (Image 149979.jpg)
-            const mainBalanceEl = document.getElementById('user-balance');
-            if (mainBalanceEl) mainBalanceEl.innerText = `${data.balance || 0} FCFA`;
+            // 1. STATISTIQUES EN HAUT DE PAGE
+            const balanceEl = document.getElementById('user-balance');
+            if (balanceEl) balanceEl.innerText = `${data.balance || 0} FCFA`;
 
-            const activePacksEl = document.getElementById('active-packs');
-            if (activePacksEl) activePacksEl.innerText = data.activePacksCount || 0;
+            const packsEl = document.getElementById('active-packs');
+            if (packsEl) packsEl.innerText = data.activePacksCount || 0;
 
-            const dailyProfitEl = document.getElementById('daily-profit');
-            if (dailyProfitEl) dailyProfitEl.innerText = `${data.dailyProfit || 0} FCFA`;
+            const profitEl = document.getElementById('daily-profit');
+            if (profitEl) profitEl.innerText = `${data.dailyProfit || 0} FCFA`;
 
+            // 2. TEXTE ET AVATAR DE LA SIDEBAR (Préserve les émojis ✏️ et 📷)
+            const nameEl = document.getElementById('profile-display-name');
+            if (nameEl) nameEl.innerText = data.username || "KAZOS 🇧🇫";
 
-            // 2. MISE À JOUR DU PROFIL DANS LA SIDEBAR (Image 149980.jpg)
-            // .innerText préserve l'émoji crayon ✏️ qui est en dehors de cette balise span/div
-            const usernameEl = document.getElementById('profile-display-name');
-            if (usernameEl) usernameEl.innerText = data.username || "KAZOS";
+            const idEl = document.getElementById('profile-display-id');
+            if (idEl) idEl.innerText = uid;
 
-            const uidEl = document.getElementById('profile-display-id');
-            if (uidEl) uidEl.innerText = uid;
-
-            const sidebarBalanceEl = document.getElementById('profile-display-balance');
-            if (sidebarBalanceEl) sidebarBalanceEl.innerText = `${data.balance || 0} FCFA`;
-
-
-            // 3. MISE À JOUR SÉCURISÉE DE L'AVATAR (Image 149980.jpg)
-            // On change uniquement la source (.src) de l'image. Le bouton photo 📷 reste inchangé.
             const avatarImg = document.getElementById('user-profile-img');
             if (avatarImg && data.avatarUrl && data.avatarUrl.trim() !== "") {
-                avatarImg.src = data.avatarUrl;
+                avatarImg.src = data.avatarUrl; // Ne change que l'image, pas le bouton de l'appareil photo
             }
 
-
-            // 4. LIEN D'AFFILIATION DYNAMIQUE (Génère le lien selon l'hébergeur actuel)
-            const referralInput = document.getElementById('referral-link');
-            if (referralInput) {
-                const currentHost = window.location.origin; // Récupère https://v226.netlify.app ou localhost
-                referralInput.value = `${currentHost}/?ref=${uid}`;
+            // 3. LIEN D'AFFILIATION DYNAMIQUE
+            const refLink = document.getElementById('referral-link');
+            if (refLink) {
+                const currentHost = window.location.origin;
+                refLink.value = `${currentHost}/?ref=${uid}`;
             }
         }
-    } catch (error) {
-        console.error("Erreur lors du rafraîchissement des données :", error);
-    }
+    });
 }
 
 // =========================================================================
-// ÉCOUTEUR D'ÉVÉNEMENT : CHANGEMENT DE LA PHOTO DE PROFIL
+// ÉVÉNEMENTS DE L'INTERFACE UTILISATEUR
 // =========================================================================
 document.addEventListener("DOMContentLoaded", () => {
-    const avatarFileInput = document.getElementById('avatar-input-file');
-    const avatarImg = document.getElementById('user-profile-img');
+    
+    // GESTION DU MENU LATÉRAL (Ouverture / Fermeture)
+    const sidebar = document.getElementById('sidebarMenu');
+    document.getElementById('menu-open')?.addEventListener('click', () => sidebar.classList.add('open'));
+    document.getElementById('menu-close')?.addEventListener('click', () => sidebar.classList.remove('open'));
 
-    if (avatarFileInput) {
-        // Cet écouteur se déclenche dès que l'utilisateur sélectionne une image dans sa galerie
-        avatarFileInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                // Validation simple du type de fichier
-                if (!file.type.startsWith('image/')) {
-                    alert("Veuillez sélectionner un fichier image valide.");
-                    return;
-                }
+    // COPIER LE LIEN D'AFFILIATION
+    const btnCopy = document.getElementById('btn-copy-link');
+    const refInput = document.getElementById('referral-link');
+    if (btnCopy && refInput) {
+        btnCopy.addEventListener('click', () => {
+            refInput.select();
+            navigator.clipboard.writeText(refInput.value);
+            showToast("Lien de parrainage copié !");
+        });
+    }
 
+    // MISE À JOUR DE LA PHOTO DE PROFIL
+    const avatarInput = document.getElementById('avatar-input-file');
+    if (avatarInput) {
+        avatarInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('image/')) {
                 const reader = new FileReader();
-                reader.onload = async (e) => {
-                    const base64Image = e.target.result;
-                    
-                    // Si l'utilisateur est bien connecté, on sauvegarde dans Firestore
-                    if (typeof currentUserUid !== 'undefined' && currentUserUid) {
+                reader.onload = async (event) => {
+                    if (currentUserUid) {
                         try {
-                            const userRef = doc(db, "users", currentUserUid);
-                            await updateDoc(userRef, { avatarUrl: base64Image });
-                            
-                            // Mise à jour visuelle immédiate
-                            if (avatarImg) avatarImg.src = base64Image;
-                            alert("Votre photo de profil a été mise à jour avec succès !");
+                            await updateDoc(doc(db, "users", currentUserUid), { avatarUrl: event.target.result });
+                            showToast("Photo mise à jour !");
                         } catch (err) {
-                            console.error("Erreur Firebase lors de l'enregistrement de l'image :", err);
-                            alert("Impossible de sauvegarder la photo sur le serveur.");
+                            showToast("Erreur lors de l'enregistrement.");
                         }
                     }
                 };
                 reader.readAsDataURL(file);
             }
         });
+    }
+
+    // DÉCONNEXION
+    document.getElementById('btn-logout')?.addEventListener('click', () => {
+        signOut(auth).then(() => window.location.href = "index.html");
+    });
+});
+
+// NOTIFICATIONS TOAST
+function showToast(message) {
+    const container = document.getElementById('toast-container');
+    if (container) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.innerText = message;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+}
+
+// VÉRIFICATION DE LA SESSION UTILISATEUR
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        currentUserUid = user.uid;
+        setupDashboardRealtimeSync(user.uid);
+    } else {
+        window.location.href = "index.html"; // Redirection si non connecté
     }
 });
