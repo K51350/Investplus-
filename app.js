@@ -38,12 +38,14 @@ async function refreshDashboardMetrics(uid) {
             if(document.getElementById('sbUid')) document.getElementById('sbUid').innerText = `ID : ${uid}`;
             if(document.getElementById('sbBalance')) document.getElementById('sbBalance').innerText = `${data.balance || 0} FCFA`;
             
-            // Affichage de la photo de profil (base64 ou URL classique)
-            if(document.getElementById('sbAvatar')) {
+            // CORRECTION CIBLÉE DE L'AVATAR (Évite le bug visuel de l'image 149977.jpg)
+            const avatarContainer = document.getElementById('sbAvatar');
+            if(avatarContainer) {
                 if(data.avatarUrl && data.avatarUrl.trim() !== "") {
-                    document.getElementById('sbAvatar').innerHTML = `<img src="${data.avatarUrl}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+                    // On injecte uniquement l'image, sans toucher aux boutons extérieurs
+                    avatarContainer.innerHTML = `<img src="${data.avatarUrl}" style="width:100%; height:100%; border-radius:50%; object-fit:cover; display:block;">`;
                 } else {
-                    document.getElementById('sbAvatar').innerHTML = "👤";
+                    avatarContainer.innerHTML = "👤";
                 }
             }
             
@@ -51,9 +53,10 @@ async function refreshDashboardMetrics(uid) {
                 document.getElementById('sbUserEmail').innerText = auth.currentUser.email;
             }
             
-            // CORRECTION : Redirection du lien d'invitation vers le nouvel hébergeur actif
+            // CORRECTION DE L'HÉBERGEUR AUTOMATIQUE (Vercel)
             if(document.getElementById('sbRefLink')) {
-                document.getElementById('sbRefLink').value = `https://votre-nouvel-hebergeur.com/?ref=${uid}`;
+                const currentHost = window.location.origin; // Détecte dynamiquement l'URL Vercel active
+                document.getElementById('sbRefLink').value = `${currentHost}/?ref=${uid}`;
             }
         }
     } catch (e) { 
@@ -102,36 +105,31 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // CORRECTION : Gestion de l'ouverture de la galerie pour l'avatar
+    // CORRECTION : Écouteur d'ouverture de galerie propre
     const avatarEditBtn = document.getElementById('sbAvatarEdit');
     const avatarFileInput = document.getElementById('avatarFileInput');
 
     if(avatarEditBtn && avatarFileInput) {
-        // Clic sur le bouton de l'appareil photo -> Déclenche le clic sur le sélecteur invisible
         avatarEditBtn.addEventListener('click', () => {
             avatarFileInput.click();
         });
 
-        // Dès que l'utilisateur choisit une photo dans sa galerie locale
         avatarFileInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (file) {
-                // Vérification sommaire du fichier pour s'assurer qu'il s'agit d'une image
                 if (!file.type.startsWith('image/')) {
                     alert("Veuillez sélectionner un fichier image valide.");
                     return;
                 }
 
                 const reader = new FileReader();
-                // Lecture et conversion du fichier en chaîne de caractères Base64 (DataURL)
                 reader.onload = async (e) => {
                     const base64Image = e.target.result;
                     if(currentUserUid) {
                         try {
-                            // Enregistrement de la chaîne Base64 directement dans Firestore
                             await updateDoc(doc(db, "users", currentUserUid), { avatarUrl: base64Image });
                             await refreshDashboardMetrics(currentUserUid);
-                            alert("Votre photo de profil a été importée et mise à jour !");
+                            alert("Votre photo de profil a été mise à jour !");
                         } catch(err) {
                             console.error(err);
                             alert("Erreur lors de la sauvegarde de l'image.");
